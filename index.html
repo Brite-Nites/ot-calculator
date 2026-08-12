@@ -37,14 +37,21 @@
     --ink-mute:  #646464;   /* same value on purpose: no sub-4.5:1 text */
     --ink-faint: #646464;
     --rule:      #dadada;   /* DS --neutral */
-    --rule-firm: #c4c4c4;
+    --rule-firm: #8a8a8a;  /* control borders. DIVERGES from DS --input (#dadada,
+                              ~1.2:1) and from my own #c4c4c4 (1.35:1) — both fail the
+                              3:1 non-text minimum. #8a8a8a = 3.33:1 on card, 3.00:1 on
+                              canvas. Same kind of deliberate divergence the DS made
+                              when it darkened --neutral-medium for WCAG. Decorative
+                              separators stay on --rule. */
     --accent:    #1a4ad6;   /* DS --status-blue-tag-text — 5.52:1, safe as text */
     --accent-fill: #205aff; /* DS --status-blue-dark — fills only */
     --accent-bg: #dae4ff;   /* DS --status-blue-light */
     --reg:       #8f8f8f;   /* bar fill only, never text */
     --reg-bg:    #f4f4f4;
     --reg-ink:   #464646;
-    --ot:        #bf8b00;   /* DS --status-yellow-dark — bar fill */
+    --ot:        #a87a00;   /* DS --status-yellow-dark darkened. #bf8b00 measured 2.94:1
+                              on --surface, just under the 3:1 non-text floor; this is
+                              3.72:1 in the same hue. Dark mode needs no change (7.11:1). */
     --ot-bg:     #fff9c4;   /* DS --status-yellow-light */
     --ot-ink:    #7d5b00;   /* DS tag text — 5.82:1 on --ot-bg */
     --dt:        #e61619;   /* DS --status-red-dark — bar fill */
@@ -72,7 +79,7 @@
       --ink-mute:  #9f9f9f;
       --ink-faint: #9f9f9f;
       --rule:      #464646;
-      --rule-firm: #5a5a5a;
+      --rule-firm: #6e6e6e;  /* 3.23:1 on dark card; #5a5a5a was 2.39:1 */
       --accent:    #7fa6ff;
       --accent-fill: #1a64ff;
       --accent-bg: #16233d;
@@ -97,7 +104,7 @@
     --ink-mute:  #9f9f9f;
     --ink-faint: #9f9f9f;
     --rule:      #464646;
-    --rule-firm: #5a5a5a;
+    --rule-firm: #6e6e6e;  /* 3.23:1 on dark card; #5a5a5a was 2.39:1 */
     --accent:    #7fa6ff;
     --accent-fill: #1a64ff;
     --accent-bg: #16233d;
@@ -381,8 +388,15 @@
     .wrap { max-width: none; padding: 0; }
 
     /* Controls you can't press on paper */
-    .presets, #apply, .apply-hint, #share, .toggle-b, .warn,
+    /* .warn deliberately NOT hidden: it carries the "hours split evenly —
+       understates California cost" caveat, and a printed sheet that drops it
+       states a number as firmer than it is. */
+    .presets, #apply, .apply-hint, #share, #printBtn, .toggle-b,
     .seg button[aria-pressed="false"], .seg button[disabled] { display: none !important; }
+    /* An off scenario B otherwise prints as a faded stub carrying the words
+       "Turn this on to compare two rates…" — reads as a broken document. */
+    .card.b-off { display: none !important; }
+    .scenarios:has(.card.b-off) { grid-template-columns: 1fr; }
     .seg { border: none; }
     .seg button[aria-pressed="true"] {
       background: none !important; color: var(--ink) !important;
@@ -407,8 +421,13 @@
     .bignum { font-size: 1.7rem; }
     .verdict { background: var(--accent-bg); break-inside: avoid; }
 
-    /* The limitations must print. A script opens the <details> first. */
+    /* The limitations must print. Two mechanisms on purpose, because neither is
+       universal: a beforeprint handler opens the <details> (Safari's support is
+       unreliable), and this CSS forces the children visible (Safari is also the
+       weak engine for that override). Together they cover more than either. */
     details.limits summary { list-style: none; }
+    details.limits > * { display: revert !important; }
+    details.limits > ol { display: block !important; }
     details.limits ol { font-size: 9.5pt; }
 
     footer.foot { break-inside: avoid; }
@@ -642,6 +661,7 @@ const evenSplit = (hrs, days) => Array(Math.max(1, days)).fill(hrs / Math.max(1,
 
 function hoursForBudget(rate, budget, days, key, maxPerDay = 16) {
   const ceiling = days * maxPerDay;
+  if (ceiling <= 0) return { hours: 0, capped: false };   /* `capped` must mean only "hit the 16h/day ceiling" */
   if (computeWeek(rate, evenSplit(ceiling, days), key).cost <= budget) return { hours: ceiling, capped: true };
   let lo = 0, hi = ceiling;
   for (let i = 0; i < 60; i++) {
@@ -734,16 +754,16 @@ function seasonYear() {
 
 function hourArray(sc, state) {
   if (mode === 'hours') {
-    const { hours } = hoursForBudget(sc.rate, sc.budget, sc.days, state);
-    return { arr: evenSplit(hours, sc.days), solved: hours };
+    const { hours, capped } = hoursForBudget(sc.rate, sc.budget, sc.days, state);
+    return { arr: evenSplit(hours, sc.days), solved: hours, capped };
   }
-  if (sc.usingPerDay) return { arr: sc.perday.map(v => v || 0), solved: null };
-  return { arr: evenSplit(sc.hours, sc.days), solved: null };
+  if (sc.usingPerDay) return { arr: sc.perday.map(v => v || 0), solved: null, capped: false };
+  return { arr: evenSplit(sc.hours, sc.days), solved: null, capped: false };
 }
 
 function renderScenario(s, state, burden, weeks) {
   const sc = readScenario(s);
-  const { arr, solved } = hourArray(sc, state);
+  const { arr, solved, capped } = hourArray(sc, state);
   const w = computeWeek(sc.rate, arr, state);
   const wage = w.cost * sc.people;
   const empl = wage * (1 + burden / 100);
@@ -766,7 +786,9 @@ function renderScenario(s, state, burden, weeks) {
       ? `${hrs(solved)}<span class="cur" style="margin-left:.25em">hrs</span>`
       : `<span class="cur">$</span>${money(empl * mult)}`}</p>
     <p class="bignum-sub">${mode === 'hours'
-      ? `at $${money(sc.rate)}/hr over ${sc.days} days · $${money(empl)}/wk loaded`
+      ? (capped
+          ? `CAPPED at 16 hrs/day over ${sc.days} days — the real answer is higher than this tool models`
+          : `at $${money(sc.rate)}/hr over ${sc.days} days · $${money(empl)}/wk loaded`)
       : `wages $${money(wage * mult)} + ${burden}% burden${sc.people > 1 ? ` · ${sc.people} people` : ''}`}</p>
   </div>`);
 
@@ -882,7 +904,11 @@ function writeUrl() {
   ['A','B'].forEach(s => DAYS.forEach((_, i) => {
     const v = $(`pd${s}${i}`).value; if (v !== '') p.set(`pd${s}${i}`, v);
   }));
-  history.replaceState(null, '', '?' + p.toString());
+  /* Opened as a local file, some browsers reject replaceState with a query
+     string. writeUrl() is the last statement in render(), so an uncaught throw
+     here would fire on every keystroke. The shareable link degrades; the
+     calculator must not. */
+  try { history.replaceState(null, '', '?' + p.toString()); } catch (e) { /* file:// */ }
 }
 function readUrl() {
   const p = new URLSearchParams(location.search);
