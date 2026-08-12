@@ -1,0 +1,988 @@
+<title>Overtime &amp; Wage Calculator — Brite Nites</title>
+
+<style>
+  /* ============================================================
+   * Palette lifted from @brite-nites/design-system v0.11 tokens.css.
+   *
+   * This page is standalone HTML and cannot import the package, so the
+   * values are copied rather than referenced. Names mirror the DS's
+   * semantic layer so the mapping stays legible:
+   *   --ground  = DS --background   (--sidebar-grey)
+   *   --surface = DS --card         (--white)
+   *   --sunken  = DS --muted        (--neutral-light)
+   *   --ink     = DS --foreground   (--neutral-dark)
+   *   --ink-mid = DS --muted-foreground (--neutral-medium)
+   *   --rule    = DS --border/--input   (--neutral)
+   *
+   * NO BRAND COLOR. Consuming apps ink the DS with their own primary; this is
+   * an internal operations tool, so it stays on the DS neutrals plus the
+   * semantic status family. Interactive states use the DS status-blue rather
+   * than any brand hue.
+   *
+   * CONTRAST DISCIPLINE, copied from the DS's DRO-724 lesson: the DS
+   * deliberately darkened --neutral-medium from #767676 to #646464 to clear
+   * 4.5:1 as body text. So there is NO pale grey text on this page — #646464
+   * is the lightest value any readable text uses. Status pairs below are the
+   * DS's own tag recipes, whose ratios it documents.
+   *
+   * Fonts: the DS uses Geist Sans / Geist Mono, which cannot be embedded in a
+   * self-contained file without the woff2. System stacks stand in.
+   * ============================================================ */
+  :root {
+    --ground:    #efefef;   /* DS --sidebar-grey */
+    --surface:   #fbfbfa;   /* DS --white */
+    --sunken:    #f4f4f4;   /* DS --neutral-light */
+    --ink:       #464646;   /* DS --neutral-dark */
+    --ink-mid:   #646464;   /* DS --neutral-medium — 5.72:1 on --surface */
+    --ink-mute:  #646464;   /* same value on purpose: no sub-4.5:1 text */
+    --ink-faint: #646464;
+    --rule:      #dadada;   /* DS --neutral */
+    --rule-firm: #c4c4c4;
+    --accent:    #1a4ad6;   /* DS --status-blue-tag-text — 5.52:1, safe as text */
+    --accent-fill: #205aff; /* DS --status-blue-dark — fills only */
+    --accent-bg: #dae4ff;   /* DS --status-blue-light */
+    --reg:       #8f8f8f;   /* bar fill only, never text */
+    --reg-bg:    #f4f4f4;
+    --reg-ink:   #464646;
+    --ot:        #bf8b00;   /* DS --status-yellow-dark — bar fill */
+    --ot-bg:     #fff9c4;   /* DS --status-yellow-light */
+    --ot-ink:    #7d5b00;   /* DS tag text — 5.82:1 on --ot-bg */
+    --dt:        #e61619;   /* DS --status-red-dark — bar fill */
+    --dt-bg:     #ffd8d8;   /* DS --status-red-light */
+    --dt-ink:    #b00b0e;   /* DS tag text — 5.54:1 on --dt-bg */
+    --good:      #1a7a1a;   /* DS --status-green-tag-text — 4.67:1 */
+
+    --r-sm: 6px;   /* DS --radius-sm */
+    --r-md: 8px;   /* DS --radius-md */
+    --r-lg: 10px;  /* DS --radius-lg */
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  /* Dark values are the DS's own .dark block, including its documented
+   * substitutions: --ring #1a64ff and --destructive #ff7b7d. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0b0b0b;
+      --surface:   #1f1f1f;
+      --sunken:    #2a2a2a;
+      --ink:       #dadada;
+      --ink-mid:   #9f9f9f;
+      --ink-mute:  #9f9f9f;
+      --ink-faint: #9f9f9f;
+      --rule:      #464646;
+      --rule-firm: #5a5a5a;
+      --accent:    #7fa6ff;
+      --accent-fill: #1a64ff;
+      --accent-bg: #16233d;
+      --reg:       #7a7a7a;
+      --reg-bg:    #2a2a2a;
+      --reg-ink:   #dadada;
+      --ot:        #d5a155;
+      --ot-bg:     #2a2318;
+      --ot-ink:    #e8c07a;
+      --dt:        #ff7b7d;
+      --dt-bg:     #2f1a1a;
+      --dt-ink:    #ffb3b4;
+      --good:      #8cba5e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:    #0b0b0b;
+    --surface:   #1f1f1f;
+    --sunken:    #2a2a2a;
+    --ink:       #dadada;
+    --ink-mid:   #9f9f9f;
+    --ink-mute:  #9f9f9f;
+    --ink-faint: #9f9f9f;
+    --rule:      #464646;
+    --rule-firm: #5a5a5a;
+    --accent:    #7fa6ff;
+    --accent-fill: #1a64ff;
+    --accent-bg: #16233d;
+    --reg:       #7a7a7a;
+    --reg-bg:    #2a2a2a;
+    --reg-ink:   #dadada;
+    --ot:        #d5a155;
+    --ot-bg:     #2a2318;
+    --ot-ink:    #e8c07a;
+    --dt:        #ff7b7d;
+    --dt-bg:     #2f1a1a;
+    --dt-ink:    #ffb3b4;
+    --good:      #8cba5e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 1.2rem 5rem; }
+
+  /* ---------- header ---------- */
+  header.top {
+    padding: 2.4rem 0 1.3rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 1.8rem;
+  }
+  .eyebrow {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 0.6rem;
+  }
+  h1 {
+    font-size: 1.85rem; line-height: 1.15; font-weight: 650;
+    letter-spacing: -0.018em; margin: 0 0 0.55rem;
+  }
+  .sub { color: var(--ink-mute); font-size: 0.92rem; margin: 0; max-width: 62ch; }
+  .stamp {
+    display: inline-block; margin-top: 0.9rem; font-family: var(--mono);
+    font-size: 0.72rem; color: var(--ink-mute);
+    background: var(--sunken); border: 1px solid var(--rule);
+    padding: 0.22em 0.55em; border-radius: var(--r-sm);
+  }
+
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 1.15rem 1.2rem; margin-bottom: 1.1rem;
+  }
+  .panel > h2 {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-mute);
+    margin: 0 0 0.95rem; padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* ---------- controls ---------- */
+  .row { display: flex; flex-wrap: wrap; gap: 1.35rem 1.4rem; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 0.42rem; }
+  .field label {
+    font-size: 0.72rem; font-weight: 650; letter-spacing: 0.045em;
+    text-transform: uppercase; color: var(--ink-mute);
+  }
+  .field .hint { font-size: 0.72rem; color: var(--ink-faint); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+  input[type="number"], input[type="date"], select {
+    font-family: var(--mono); font-size: 0.95rem;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
+    padding: 0.42rem 0.5rem; width: 100%;
+  }
+  input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
+  select { font-family: var(--sans); }
+  /* Element-prefixed on purpose: input[type="..."] above outranks a bare class,
+     so plain .w-date lost to width:100% and every field stretched full width. */
+  input.w-rate   { width: 7rem; }
+  input.w-hours  { width: 7rem; }
+  input.w-days   { width: 5.5rem; }
+  input.w-small  { width: 5.5rem; }
+  input.w-date   { width: 9.5rem; }
+  select.w-state { width: 17rem; }
+
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .seg { display: inline-flex; border: 1px solid var(--rule-firm); border-radius: var(--r-sm); overflow: hidden; }
+  .seg button {
+    font-family: var(--sans); font-size: 0.82rem; font-weight: 550;
+    background: var(--surface); color: var(--ink-mid);
+    border: none; padding: 0.44rem 0.85rem; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--rule-firm); }
+  .seg button[aria-pressed="true"] { background: var(--accent-fill); color: #fff; }
+  .seg button[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+  .fixed-note {
+    font-family: var(--mono); font-size: 0.8rem; color: var(--ink-mid);
+    background: var(--sunken); border: 1px solid var(--rule);
+    padding: 0.42rem 0.6rem; border-radius: var(--r-sm); white-space: nowrap;
+  }
+
+  /* per-day grid */
+  .perday { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 0.5rem; margin-top: 0.55rem; }
+  .perday .d { display: flex; flex-direction: column; gap: 0.25rem; }
+  .perday .d span {
+    font-family: var(--mono); font-size: 0.68rem; color: var(--ink-mute);
+    text-align: center; letter-spacing: 0.03em;
+  }
+  .perday input { padding: 0.36rem 0.3rem; text-align: center; font-size: 0.88rem; }
+  .hidden { display: none !important; }
+
+  /* ---------- scenario cards ---------- */
+  .scenarios { display: grid; grid-template-columns: 1fr; gap: 1.1rem; }
+  @media (min-width: 860px) { .scenarios { grid-template-columns: 1fr 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 1.35rem 1.35rem 1.5rem;
+    display: flex; flex-direction: column; gap: 1.7rem;
+  }
+  /* results stack — each block needs real air between it and the next */
+  #outA, #outB { display: flex; flex-direction: column; gap: 1.7rem; }
+  .card.b-off { opacity: 0.55; }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+  .card-head h3 {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-mute); margin: 0;
+  }
+  .toggle-b {
+    font-family: var(--sans); font-size: 0.75rem; font-weight: 550;
+    background: none; border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
+    color: var(--ink-mute); padding: 0.2rem 0.5rem; cursor: pointer;
+  }
+
+  /* ---------- big result ---------- */
+  .bignum {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 2.5rem; line-height: 1.05; font-weight: 600;
+    letter-spacing: -0.03em; margin: 0;
+  }
+  .bignum .cur { font-size: 1.4rem; vertical-align: 0.42em; color: var(--ink-mute); margin-right: 0.05em; }
+  .bignum-label { font-size: 0.72rem; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 0.7rem; }
+  .bignum-sub { font-family: var(--mono); font-size: 0.82rem; color: var(--ink-mute); margin: 0.85rem 0 0; font-variant-numeric: tabular-nums; }
+
+  /* ---------- hour bar ---------- */
+  .bar { display: flex; height: 1.5rem; border-radius: var(--r-sm); overflow: hidden; background: var(--sunken); border: 1px solid var(--rule); }
+  .bar > div { min-width: 0; }
+  .bar .s-reg { background: var(--reg); }
+  .bar .s-ot  { background: var(--ot); }
+  .bar .s-dt  { background: var(--dt); }
+  .legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: 0.7rem; }
+  .legend span {
+    font-family: var(--mono); font-size: 0.74rem; font-variant-numeric: tabular-nums;
+    padding: 0.2em 0.55em; border-radius: var(--radius-full, 9999px);
+    display: inline-flex; align-items: center; white-space: nowrap;
+  }
+  .legend .k-reg { background: var(--reg-bg); color: var(--reg-ink); }
+  .legend .k-ot  { background: var(--ot-bg);  color: var(--ot-ink); }
+  .legend .k-dt  { background: var(--dt-bg);  color: var(--dt-ink); }
+  .legend i { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; }
+  .legend .k-reg i { background: var(--reg); }
+  .legend .k-ot  i { background: var(--ot); }
+  .legend .k-dt  i { background: var(--dt); }
+
+  /* ---------- mini table ---------- */
+  table.mini { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  table.mini th, table.mini td { padding: 0.55rem 0.1rem; border-bottom: 1px solid var(--rule); text-align: left; }
+  table.mini th { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); }
+  table.mini td.n, table.mini th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.mini tr:last-child td { border-bottom: none; }
+  table.mini tr.emph td { font-weight: 650; color: var(--ink); }
+
+  .tw { overflow-x: auto; }
+
+  /* ---------- verdict strip ---------- */
+  .verdict {
+    background: var(--accent-bg); border: 1px solid var(--accent);
+    border-radius: var(--r-md); padding: 1rem 1.2rem; margin-bottom: 1.1rem;
+  }
+  .verdict p { margin: 0 0 0.4rem; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict .lead { font-size: 1.05rem; font-weight: 600; color: var(--ink); }
+  .verdict .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .verdict .small { font-size: 0.85rem; color: var(--ink-mid); }
+
+  /* ---------- warnings ---------- */
+  .warn {
+    border-left: 3px solid var(--ot); background: var(--ot-bg);
+    padding: 0.75rem 0.9rem; border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    font-size: 0.86rem; color: var(--ink-mid); margin: 0.9rem 0 0;
+  }
+  .warn b { color: var(--ink); }
+
+  /* ---------- limitations ---------- */
+  details.limits { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 0.9rem 1.2rem; }
+  details.limits summary {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--dt); cursor: pointer;
+  }
+  details.limits ol { margin: 1rem 0 0; padding-left: 1.4rem; font-size: 0.88rem; color: var(--ink-mid); max-width: 78ch; }
+  details.limits li { margin-bottom: 0.7rem; }
+  details.limits b { color: var(--ink); }
+
+  footer.foot {
+    margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid var(--rule);
+    font-size: 0.8rem; color: var(--ink-faint);
+  }
+  footer.foot code { font-family: var(--mono); font-size: 0.94em; }
+
+  /* ---------- presets ---------- */
+  .presets { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .presets button, .chipbtn {
+    font-family: var(--sans); font-size: 0.78rem; font-weight: 550;
+    background: var(--sunken); color: var(--ink-mid);
+    border: 1px solid var(--rule-firm); border-radius: 999px;
+    padding: 0.3rem 0.72rem; cursor: pointer; white-space: nowrap;
+  }
+  .presets button:hover, .chipbtn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---------- apply ---------- */
+  .applybtn {
+    font-family: var(--sans); font-size: 0.86rem; font-weight: 600;
+    background: var(--sunken); color: var(--ink-mute);
+    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
+    padding: 0.44rem 1.1rem; cursor: default;
+  }
+  .applybtn[data-dirty="1"] {
+    background: var(--accent-fill); color: #fff; border-color: var(--accent-fill); cursor: pointer;
+  }
+  .apply-hint { font-size: 0.76rem; color: var(--ink-faint); margin: 0.55rem 0 0; }
+  .apply-hint[data-dirty="1"] { color: var(--accent); font-weight: 600; }
+
+  .weeks-out {
+    font-family: var(--mono); font-size: 0.86rem; color: var(--ink-mid);
+    background: var(--sunken); border: 1px solid var(--rule);
+    padding: 0.42rem 0.6rem; border-radius: var(--r-sm); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .weeks-out.none { color: var(--ink-faint); }
+
+  .subhead {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-faint);
+    margin: 0 0 0.75rem; padding-top: 0.2rem;
+  }
+  .divide { border: none; border-top: 1px solid var(--rule); margin: 1.5rem 0 1.2rem; }
+
+  .copybtn {
+    font-family: var(--sans); font-size: 0.78rem; font-weight: 550;
+    background: var(--surface); color: var(--ink-mid);
+    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
+    padding: 0.35rem 0.7rem; cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  /* ---------- print / PDF ---------- */
+  .print-only { display: none; }
+
+  @media print {
+    /* Force the light palette. A dark-mode screen prints as a black slab. */
+    :root, :root[data-theme="dark"] {
+      --ground: #ffffff; --surface: #ffffff; --sunken: #f4f4f4;
+      --ink: #1a1a1a; --ink-mid: #4a4a4a; --ink-mute: #4a4a4a; --ink-faint: #4a4a4a;
+      --rule: #c4c4c4; --rule-firm: #999999;
+      --accent: #1a4ad6; --accent-fill: #205aff; --accent-bg: #eef2fd;
+      --reg: #8f8f8f; --reg-bg: #f4f4f4; --reg-ink: #1a1a1a;
+      --ot: #bf8b00; --ot-bg: #fff9c4; --ot-ink: #6b4e00;
+      --dt: #e61619; --dt-bg: #ffd8d8; --dt-ink: #9a0a0c;
+    }
+    @page { margin: 0.55in; }
+    body { background: #fff; font-size: 10.5pt; }
+    .wrap { max-width: none; padding: 0; }
+
+    /* Controls you can't press on paper */
+    .presets, #apply, .apply-hint, #share, .toggle-b, .warn,
+    .seg button[aria-pressed="false"], .seg button[disabled] { display: none !important; }
+    .seg { border: none; }
+    .seg button[aria-pressed="true"] {
+      background: none !important; color: var(--ink) !important;
+      padding: 0; font-weight: 700;
+    }
+    input, select {
+      border: none !important; background: none !important;
+      padding: 0 !important; color: var(--ink) !important;
+      -webkit-appearance: none; appearance: none;
+      font-weight: 600; text-align: left !important; width: auto !important;
+    }
+    input::-webkit-calendar-picker-indicator { display: none; }
+
+    header.top { padding-top: 0; }
+    .stamp { border: none; background: none; padding: 0; }
+    .print-only { display: block; }
+
+    .panel, .card, details.limits { break-inside: avoid; box-shadow: none; }
+    .scenarios { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+    .card { gap: 1rem; padding: 0.8rem; }
+    #outA, #outB { gap: 1rem; }
+    .bignum { font-size: 1.7rem; }
+    .verdict { background: var(--accent-bg); break-inside: avoid; }
+
+    /* The limitations must print. A script opens the <details> first. */
+    details.limits summary { list-style: none; }
+    details.limits ol { font-size: 9.5pt; }
+
+    footer.foot { break-inside: avoid; }
+    a[href^="http"]::after { content: ""; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Brite Nites · Field Operations</p>
+    <h1>Overtime &amp; Wage Calculator</h1>
+    <p class="sub">What a field worker costs, at any rate and any number of hours.</p>
+    <span class="stamp">rates current as of January 2026 · verify before relying on this</span>
+    <p class="print-only" id="printStamp" style="font-family:var(--mono);font-size:0.72rem;color:var(--ink-mid);margin:0.5rem 0 0"></p>
+  </header>
+
+  <!-- ============ shared settings ============ -->
+  <section class="panel">
+    <h2>View — changes immediately</h2>
+    <div class="row">
+      <div class="field">
+        <label>Direction</label>
+        <div class="seg" id="mode">
+          <button type="button" data-mode="cost" aria-pressed="true">Cost from hours</button>
+          <button type="button" data-mode="hours" aria-pressed="false">Hours from budget</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Show totals per</label>
+        <div class="seg" id="period">
+          <button type="button" data-period="week" aria-pressed="true">Week</button>
+          <button type="button" data-period="biweek" aria-pressed="false">Bi-week</button>
+          <button type="button" data-period="range" aria-pressed="false" id="periodRange" disabled
+                  title="Set and apply a date range below to enable this">Date range</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Workweek starts</label>
+        <div class="fixed-note">Monday</div>
+      </div>
+    </div>
+
+    <hr class="divide">
+
+    <p class="subhead">Assumptions — press Apply to use them</p>
+    <div class="row">
+      <div class="field">
+        <label for="state">State ruleset</label>
+        <select id="state" class="w-state">
+          <option value="FED" selected>Federal — 40 hrs/week only</option>
+          <option value="CA">California — daily OT + double time</option>
+          <option value="CO">Colorado — daily OT over 12</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="burden">Employer burden %</label>
+        <input type="number" id="burden" class="w-small" value="7.65" min="0" max="100" step="0.01">
+      </div>
+      <div class="field">
+        <label for="deduct">Worker deductions %</label>
+        <input type="number" id="deduct" class="w-small" value="18.2" min="0" max="100" step="0.1">
+      </div>
+      <div class="field">
+        <label for="d1">Date range <span class="hint">optional</span></label>
+        <div style="display:flex;gap:0.45rem;align-items:center">
+          <input type="date" id="d1" class="w-date" aria-label="Start date">
+          <span style="color:var(--ink-faint)">→</span>
+          <input type="date" id="d2" class="w-date" aria-label="End date">
+        </div>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <span class="weeks-out none" id="weeksOut">no range</span>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button type="button" class="applybtn" id="apply" data-dirty="0">Apply</button>
+      </div>
+    </div>
+
+    <div class="presets" id="seasonPresets" style="margin-top:1.1rem">
+      <button type="button" data-s1="09-01" data-s2="10-31" data-y="0">Ramp · Sep 1 – Oct 31</button>
+      <button type="button" data-s1="11-01" data-s2="12-15" data-y="0">Peak · Nov 1 – Dec 15</button>
+      <button type="button" data-s1="01-05" data-s2="01-31" data-y="1">Takedown · Jan</button>
+      <button type="button" data-clear="1">Clear dates</button>
+    </div>
+
+    <p class="apply-hint" id="applyHint" data-dirty="0">Assumptions applied. Both percentages are placeholders — see the limitations at the bottom.</p>
+  </section>
+
+  <!-- ============ scenarios ============ -->
+  <div class="scenarios">
+    <div class="card" id="cardA">
+      <div class="card-head"><h3>Scenario A</h3></div>
+      <div class="presets" data-preset-for="A">
+        <button type="button" data-r="18" data-h="80" data-d="6">$18 · 80 hrs</button>
+        <button type="button" data-r="19" data-h="70" data-d="6">$19 · 70 hrs</button>
+        <button type="button" data-r="25" data-h="45" data-d="5">$25 · 45 hrs</button>
+        <button type="button" data-r="24" data-h="45" data-d="5">$24 · capped 45</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="rateA">Hourly rate</label>
+          <input type="number" id="rateA" class="w-rate" value="18" min="0" step="0.25">
+        </div>
+        <div class="field" data-when="cost">
+          <label for="hoursA">Hours worked / week</label>
+          <input type="number" id="hoursA" class="w-hours" value="70" min="0" step="0.25">
+        </div>
+        <div class="field" data-when="hours">
+          <label for="budgetA">Weekly budget $</label>
+          <input type="number" id="budgetA" class="w-hours" value="1500" min="0" step="10">
+        </div>
+        <div class="field">
+          <label for="daysA">Days / week</label>
+          <input type="number" id="daysA" class="w-days" value="6" min="1" max="7" step="1">
+        </div>
+        <div class="field">
+          <label for="peopleA">× people</label>
+          <input type="number" id="peopleA" class="w-days" value="1" min="1" step="1">
+        </div>
+      </div>
+      <div class="field" data-when="cost">
+        <label>Per-day hours <span class="hint">optional — overrides the weekly total. Matters in CA and CO.</span></label>
+        <div class="perday" id="perdayA"></div>
+      </div>
+      <div id="outA"></div>
+    </div>
+
+    <div class="card b-off" id="cardB">
+      <div class="card-head">
+        <h3>Scenario B</h3>
+        <button type="button" class="toggle-b" id="toggleB" aria-pressed="false">Turn on</button>
+      </div>
+      <div id="bBody" class="hidden">
+        <div class="presets" data-preset-for="B" style="margin-bottom:1.7rem">
+          <button type="button" data-r="18" data-h="80" data-d="6">$18 · 80 hrs</button>
+          <button type="button" data-r="19" data-h="70" data-d="6">$19 · 70 hrs</button>
+          <button type="button" data-r="25" data-h="45" data-d="5">$25 · 45 hrs</button>
+          <button type="button" data-r="24" data-h="45" data-d="5">$24 · capped 45</button>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="rateB">Hourly rate</label>
+            <input type="number" id="rateB" class="w-rate" value="25" min="0" step="0.25">
+          </div>
+          <div class="field" data-when="cost">
+            <label for="hoursB">Hours worked / week</label>
+            <input type="number" id="hoursB" class="w-hours" value="45" min="0" step="0.25">
+          </div>
+          <div class="field" data-when="hours">
+            <label for="budgetB">Weekly budget $</label>
+            <input type="number" id="budgetB" class="w-hours" value="1500" min="0" step="10">
+          </div>
+          <div class="field">
+            <label for="daysB">Days / week</label>
+            <input type="number" id="daysB" class="w-days" value="5" min="1" max="7" step="1">
+          </div>
+          <div class="field">
+            <label for="peopleB">× people</label>
+            <input type="number" id="peopleB" class="w-days" value="1" min="1" step="1">
+          </div>
+        </div>
+        <div class="field" data-when="cost">
+          <label>Per-day hours <span class="hint">optional</span></label>
+          <div class="perday" id="perdayB"></div>
+        </div>
+        <div id="outB"></div>
+      </div>
+      <p id="bHint" class="bignum-sub" style="margin:0">Turn this on to compare two rates side by side — for example $18 at 70 hours against $25 at 45.</p>
+    </div>
+  </div>
+
+  <div id="compare"></div>
+
+  <details class="limits">
+    <summary>What this does not count — read before quoting a number</summary>
+    <ol>
+      <li><b>Both percentages are placeholders.</b> Employer burden defaults to <b>7.65%</b>, which is the employer FICA share only (6.2% Social Security + 1.45% Medicare) — statutory, and it excludes unemployment and workers' comp. Workers' comp is the expensive one for roof work, so the real figure is higher. Worker deductions default to <b>18.2%</b>, drawn from observed payroll at roughly 82% net-to-gross; it varies by person, filing status and state. Overwrite both once you have real numbers.</li>
+      <li><b>"Federal" covers every state without a daily overtime rule</b> — VA, UT, AZ, WA, MD, DC, NC, PA, NY, CT, FL and TX among Brite's territories. Only California and Colorado have daily rules.</li>
+      <li><b>Wage cost only.</b> Not included: California meal and rest break premiums (one hour of pay per violation, and shifts over 10 hours require a second meal period), productivity decline on long days, safety exposure, or turnover.</li>
+      <li><b>A 10% productivity loss erases the whole cheap-labour-plus-overtime advantage.</b> $1,800 ÷ $25.00 = 72 effective hours. If 80 nominal hours produce fewer than 72 hours of real output, an $18 worker at 80 hours no longer beats a $25 worker at 40.</li>
+      <li><b>Enter hours <em>worked</em>, not shift length.</b> Meal breaks are unpaid when properly taken, so a 16-hour shift with two 30-minute meals is 15 paid hours. In California that's $396 against $360 at $18/hr — $36 a day.</li>
+      <li><b>Splitting hours evenly across days understates California and Colorado cost, always.</b> Double-time and daily overtime trigger on individual long days, and averaging minimises how many hours clear those lines. Measured: 66 hours over 6 days is $1,422 evenly split against $1,476 ragged — 3.8% low. Use the per-day boxes for real weeks.</li>
+      <li><b>Colorado's 12-consecutive-hours rule is not modelled.</b> Colorado owes overtime after 12 consecutive hours even when they span two calendar days. That needs shift start and end times, not daily totals.</li>
+      <li><b>This page cannot track law changes.</b> It is self-contained with no connection to anything. What moves every January 1: the California minimum wage. Law monitoring is a service — your payroll provider, an employment attorney, or CalChamber alerts.</li>
+      <li><b>Validation.</b> The federal path is checked against 29 periods of real Brite payroll, 26 matching to the cent. California and Colorado are built from published state rules and checked against hand-computed cases only — no Brite paycheck exists to test them against.</li>
+    </ol>
+  </details>
+
+  <footer class="foot">
+    <p>Engine and test harness live in the internal operations repo. Wages and overtime only; not a budget tool. <button type="button" class="copybtn" id="share">Copy shareable link</button>
+    <button type="button" class="copybtn" id="printBtn" style="margin-left:0.4rem">Print / save as PDF</button></p>
+  </footer>
+
+</div>
+
+<script>
+/* ===================== engine (mirrors engine.js) ===================== */
+const RULES = {
+  FED: { weeklyThreshold: 40, dailyOtAfter: null, dailyDtAfter: null, seventhDay: false, label: 'Federal' },
+  CA:  { weeklyThreshold: 40, dailyOtAfter: 8,    dailyDtAfter: 12,   seventhDay: true,  label: 'California' },
+  CO:  { weeklyThreshold: 40, dailyOtAfter: 12,   dailyDtAfter: null, seventhDay: false, label: 'Colorado' },
+};
+const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+
+function computeWeek(rate, hoursByDay, key) {
+  const r = RULES[key], otRate = rate * 1.5, dtRate = rate * 2;
+  let reg = 0, ot = 0, dt = 0;
+  hoursByDay.forEach((h, i) => {
+    if (!(h > 0)) return;
+    if (r.seventhDay && hoursByDay.filter(x => x > 0).length === 7 && i === 6) {
+      ot += Math.min(h, 8); dt += Math.max(h - 8, 0); return;
+    }
+    if (r.dailyOtAfter === null) { reg += h; return; }
+    reg += Math.min(h, r.dailyOtAfter);
+    if (r.dailyDtAfter !== null) {
+      ot += Math.max(Math.min(h, r.dailyDtAfter) - r.dailyOtAfter, 0);
+      dt += Math.max(h - r.dailyDtAfter, 0);
+    } else {
+      ot += Math.max(h - r.dailyOtAfter, 0);
+    }
+  });
+  if (reg > r.weeklyThreshold) { ot += reg - r.weeklyThreshold; reg = r.weeklyThreshold; }
+  const cost = reg * rate + ot * otRate + dt * dtRate, total = reg + ot + dt;
+  return { reg: r2(reg), ot: r2(ot), dt: r2(dt), total: r2(total), cost: r2(cost),
+           blended: total > 0 ? r2(cost / total) : 0 };
+}
+const evenSplit = (hrs, days) => Array(Math.max(1, days)).fill(hrs / Math.max(1, days));
+
+function hoursForBudget(rate, budget, days, key, maxPerDay = 16) {
+  const ceiling = days * maxPerDay;
+  if (computeWeek(rate, evenSplit(ceiling, days), key).cost <= budget) return { hours: ceiling, capped: true };
+  let lo = 0, hi = ceiling;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (computeWeek(rate, evenSplit(mid, days), key).cost > budget) hi = mid; else lo = mid;
+  }
+  return { hours: r2(lo), capped: false };
+}
+
+/* ===================== helpers ===================== */
+const $ = id => document.getElementById(id);
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const money = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const hrs = n => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+let mode = 'cost', bOn = false, period = 'week';
+
+/* Assumptions are staged, not live — they take effect on Apply.
+   View toggles (direction, period) are instant. */
+const applied = { state: 'FED', burden: 7.65, deduct: 18.2, d1: '', d2: '' };
+
+['A','B'].forEach(s => {
+  const host = $('perday' + s);
+  DAYS.forEach((d, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'd';
+    wrap.innerHTML = `<span>${d}</span><input type="number" min="0" max="24" step="0.25"
+                       id="pd${s}${i}" placeholder="—" aria-label="${d} hours, scenario ${s}">`;
+    host.appendChild(wrap);
+  });
+});
+
+function readScenario(s) {
+  const rate = +$('rate' + s).value || 0;
+  const days = Math.min(7, Math.max(1, +$('days' + s).value || 1));
+  const people = Math.max(1, +$('people' + s).value || 1);
+  const perday = DAYS.map((_, i) => $(`pd${s}${i}`).value).map(v => v === '' ? null : (+v || 0));
+  const usingPerDay = perday.some(v => v !== null);
+  return { rate, days, people, perday, usingPerDay,
+           hours: +$('hours' + s).value || 0, budget: +$('budget' + s).value || 0 };
+}
+
+function weeksBetween(a, b) {
+  if (!a || !b) return null;
+  const ms = new Date(b + 'T00:00') - new Date(a + 'T00:00');
+  if (!(ms >= 0)) return null;
+  return r2((ms / 86400000 + 1) / 7);
+}
+
+/* Live readout so the date fields visibly do something before Apply. */
+function updateWeeksOut() {
+  const w = weeksBetween($('d1').value, $('d2').value);
+  const el = $('weeksOut');
+  if (w === null) { el.textContent = 'no range set'; el.classList.add('none'); }
+  else { el.textContent = `= ${hrs(w)} weeks`; el.classList.remove('none'); }
+}
+
+function settingsDirty() {
+  return $('state').value !== applied.state
+      || (+$('burden').value || 0) !== applied.burden
+      || (+$('deduct').value || 0) !== applied.deduct
+      || $('d1').value !== applied.d1
+      || $('d2').value !== applied.d2;
+}
+function markDirty() {
+  const d = settingsDirty() ? '1' : '0';
+  $('apply').dataset.dirty = d;
+  $('applyHint').dataset.dirty = d;
+  const wk = weeksBetween(applied.d1, applied.d2);
+  $('applyHint').textContent = d === '1'
+    ? 'Unapplied changes — press Apply.'
+    : (wk ? `Applied. Date range is ${hrs(wk)} weeks — switch "Show totals per" to Date range to total it.`
+          : 'Assumptions applied. Both percentages are placeholders — see the limitations at the bottom.');
+  updateWeeksOut();
+}
+function applySettings() {
+  applied.state  = $('state').value;
+  applied.burden = Math.max(0, +$('burden').value || 0);
+  applied.deduct = Math.max(0, Math.min(100, +$('deduct').value || 0));
+  applied.d1 = $('d1').value;
+  applied.d2 = $('d2').value;
+  markDirty();
+  render();
+}
+
+/* Season presets. Install season spans a year boundary, so takedown is +1. */
+function seasonYear() {
+  const now = new Date();
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+function hourArray(sc, state) {
+  if (mode === 'hours') {
+    const { hours } = hoursForBudget(sc.rate, sc.budget, sc.days, state);
+    return { arr: evenSplit(hours, sc.days), solved: hours };
+  }
+  if (sc.usingPerDay) return { arr: sc.perday.map(v => v || 0), solved: null };
+  return { arr: evenSplit(sc.hours, sc.days), solved: null };
+}
+
+function renderScenario(s, state, burden, weeks) {
+  const sc = readScenario(s);
+  const { arr, solved } = hourArray(sc, state);
+  const w = computeWeek(sc.rate, arr, state);
+  const wage = w.cost * sc.people;
+  const empl = wage * (1 + burden / 100);
+  const biweek = empl * 2;
+  const span = weeks ? empl * weeks : null;
+  const seg = t => w.total > 0 ? (t / w.total * 100) : 0;
+
+  const mult = period === 'biweek' ? 2 : (period === 'range' && weeks ? weeks : 1);
+  const pLab = period === 'biweek' ? 'bi-week'
+             : period === 'range'  ? `${hrs(weeks)}-week stretch`
+             : 'week';
+  const oLab = period === 'week' ? 'bi-week' : 'week';
+  const oVal = period === 'week' ? biweek : empl;
+
+  const parts = [];
+
+  parts.push(`<div>
+    <p class="bignum-label">${mode === 'hours' ? 'Max hours affordable' : `Cost to Brite, per ${pLab}`}</p>
+    <p class="bignum">${mode === 'hours'
+      ? `${hrs(solved)}<span class="cur" style="margin-left:.25em">hrs</span>`
+      : `<span class="cur">$</span>${money(empl * mult)}`}</p>
+    <p class="bignum-sub">${mode === 'hours'
+      ? `at $${money(sc.rate)}/hr over ${sc.days} days · $${money(empl)}/wk loaded`
+      : `wages $${money(wage * mult)} + ${burden}% burden${sc.people > 1 ? ` · ${sc.people} people` : ''}`}</p>
+  </div>`);
+
+  parts.push(`<div>
+    <div class="bar">
+      ${w.reg ? `<div class="s-reg" style="width:${seg(w.reg)}%"></div>` : ''}
+      ${w.ot ? `<div class="s-ot" style="width:${seg(w.ot)}%"></div>` : ''}
+      ${w.dt ? `<div class="s-dt" style="width:${seg(w.dt)}%"></div>` : ''}
+    </div>
+    <div class="legend">
+      <span class="k-reg"><i></i>Regular ${hrs(w.reg)} hrs @ $${money(sc.rate)}</span>
+      <span class="k-ot"><i></i>OT ${hrs(w.ot)} hrs @ $${money(sc.rate * 1.5)}</span>
+      ${RULES[state].dailyDtAfter !== null || w.dt ? `<span class="k-dt"><i></i>Double ${hrs(w.dt)} hrs @ $${money(sc.rate * 2)}</span>` : ''}
+    </div>
+  </div>`);
+
+  const perPersonGross = w.cost * mult;
+  const perPersonNet = perPersonGross * (1 - applied.deduct / 100);
+
+  parts.push(`<div class="tw"><table class="mini">
+    <tr><th>Hours worked, ${pLab}</th><td class="n">${hrs(w.total * sc.people * mult)}</td></tr>
+    <tr><th>Blended rate</th><td class="n">$${money(w.blended)} / hr</td></tr>
+    <tr><th>Wages, ${pLab}</th><td class="n">$${money(wage * mult)}</td></tr>
+    <tr><th>Loaded, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
+    ${span !== null && period !== 'range' ? `<tr class="emph"><th>Loaded × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
+    <tr><th>Worker gross, per person</th><td class="n">$${money(perPersonGross)}</td></tr>
+    <tr><th>Worker net, per person <span class="hint">est.</span></th><td class="n">$${money(perPersonNet)}</td></tr>
+    ${span !== null && period !== 'range' ? `<tr><th>Worker net × ${hrs(weeks)} weeks <span class="hint">est.</span></th><td class="n">$${money(w.cost * weeks * (1 - applied.deduct / 100))}</td></tr>` : ''}
+  </table></div>`);
+
+  if (state !== 'FED' && !sc.usingPerDay && mode === 'cost' && w.total > 0) {
+    parts.push(`<div class="warn"><b>Hours split evenly across ${sc.days} days.</b>
+      In ${RULES[state].label} that understates cost whenever real days are uneven, because the premium
+      triggers on individual long days. Use the per-day boxes for a real week.</div>`);
+  }
+
+  $('out' + s).innerHTML = parts.join('');
+  return { sc, w, wage, empl, solved };
+}
+
+function renderCompare(A, B, state, burden) {
+  if (!bOn) { $('compare').innerHTML = ''; return; }
+  const out = [];
+
+  const mult = period === 'biweek' ? 2 : 1;
+  const pLab = period === 'biweek' ? 'bi-week' : 'week';
+
+  if (mode === 'cost') {
+    const cheaper = A.empl <= B.empl ? 'A' : 'B';
+    const gap = Math.abs(A.empl - B.empl) * mult;
+    const aH = A.w.total * A.sc.people, bH = B.w.total * B.sc.people;
+    out.push(`<p class="lead">Scenario ${cheaper} costs <span class="num">$${money(gap)}</span> less per ${pLab}.</p>`);
+    out.push(`<p class="small">A delivers <span class="num">${hrs(aH)}</span> hours at a blended
+      <span class="num">$${money(A.w.blended)}</span>/hr. B delivers <span class="num">${hrs(bH)}</span> hours at
+      <span class="num">$${money(B.w.blended)}</span>/hr.</p>`);
+
+    const hi = aH >= bH ? A : B, lo = aH >= bH ? B : A;
+    const hiN = aH >= bH ? 'A' : 'B', loN = aH >= bH ? 'B' : 'A';
+    const extra = r2(hi.w.total * hi.sc.people - lo.w.total * lo.sc.people);
+    if (extra > 0) {
+      const per = r2((hi.empl - lo.empl) / extra);
+      out.push(`<p class="small">Scenario ${hiN} buys <span class="num">${hrs(extra)}</span> more hours than ${loN},
+        at <span class="num">$${money(Math.abs(per))}</span> per extra hour${per < 0 ? ' — and costs less overall' : ''}.</p>`);
+    }
+
+    [['A', A], ['B', B]].forEach(([n, X]) => {
+      if (X.w.total > X.sc.people * 40) {
+        const bodies = Math.ceil(X.w.total * X.sc.people / 40);
+        const alt = computeWeek(X.sc.rate, evenSplit(40, 5), state).cost * bodies * (1 + burden / 100);
+        const save = r2((X.empl - alt) * mult);
+        if (save > 0) out.push(`<p class="small"><b>Scenario ${n} on wages alone:</b> the same
+          <span class="num">${hrs(X.w.total * X.sc.people * mult)}</span> hours from <span class="num">${bodies}</span> people
+          at 40 hrs each costs <span class="num">$${money(alt * mult)}</span> —
+          <span class="num">$${money(save)}</span> less. Overtime only wins once the fixed cost of an extra body
+          (recruiting, training, housing, per diem, truck seat) exceeds that. Brite can't currently quantify it.</p>`);
+      }
+    });
+  } else {
+    out.push(`<p class="lead">At the same budget, A buys <span class="num">${hrs(A.solved)}</span> hours,
+      B buys <span class="num">${hrs(B.solved)}</span>.</p>`);
+    const d = r2(Math.abs(A.solved - B.solved));
+    out.push(`<p class="small">${A.solved >= B.solved ? 'A' : 'B'} buys <span class="num">${hrs(d)}</span> more hours
+      for the same money.</p>`);
+  }
+
+  $('compare').innerHTML = `<div class="verdict">${out.join('')}</div>`;
+}
+
+function render() {
+  const state = applied.state;
+  const burden = applied.burden;
+  const weeks = weeksBetween(applied.d1, applied.d2);
+  /* The range segment only exists when an APPLIED range does. If the range is
+     cleared while selected, fall back to week rather than silently showing x1. */
+  $('periodRange').disabled = !weeks;
+  if (period === 'range' && !weeks) setPeriod('week');
+  document.querySelectorAll('[data-when]').forEach(el => {
+    el.classList.toggle('hidden', el.dataset.when !== mode);
+  });
+  const A = renderScenario('A', state, burden, weeks);
+  const B = bOn ? renderScenario('B', state, burden, weeks) : null;
+  renderCompare(A, B, state, burden);
+  writeUrl();
+}
+
+/* ---------- share via URL ---------- */
+const URL_KEYS = ['state','burden','deduct','d1','d2','rateA','hoursA','budgetA','daysA','peopleA',
+                  'rateB','hoursB','budgetB','daysB','peopleB'];
+function writeUrl() {
+  const p = new URLSearchParams();
+  URL_KEYS.forEach(k => { const el = $(k); if (el && el.value !== '') p.set(k, el.value); });
+  p.set('mode', mode); p.set('period', period); if (bOn) p.set('b', '1');
+  ['A','B'].forEach(s => DAYS.forEach((_, i) => {
+    const v = $(`pd${s}${i}`).value; if (v !== '') p.set(`pd${s}${i}`, v);
+  }));
+  history.replaceState(null, '', '?' + p.toString());
+}
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  if (![...p.keys()].length) return;
+  URL_KEYS.forEach(k => { if (p.has(k) && $(k)) $(k).value = p.get(k); });
+  ['A','B'].forEach(s => DAYS.forEach((_, i) => {
+    const key = `pd${s}${i}`; if (p.has(key)) $(key).value = p.get(key);
+  }));
+  if (p.get('mode') === 'hours') setMode('hours');
+  if (p.get('period') === 'biweek') setPeriod('biweek');
+  if (p.get('b') === '1') setB(true);
+}
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('#mode button').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+}
+function setPeriod(v) {
+  period = v;
+  document.querySelectorAll('#period button').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.period === v)));
+}
+function setB(on) {
+  bOn = on;
+  $('bBody').classList.toggle('hidden', !on);
+  $('bHint').classList.toggle('hidden', on);
+  $('cardB').classList.toggle('b-off', !on);
+  $('toggleB').textContent = on ? 'Turn off' : 'Turn on';
+  $('toggleB').setAttribute('aria-pressed', String(on));
+}
+
+/* view toggles — instant */
+document.querySelectorAll('#mode button').forEach(b =>
+  b.addEventListener('click', () => { setMode(b.dataset.mode); render(); }));
+document.querySelectorAll('#period button').forEach(b =>
+  b.addEventListener('click', () => { setPeriod(b.dataset.period); render(); }));
+$('toggleB').addEventListener('click', () => { setB(!bOn); render(); });
+
+/* assumptions — staged until Apply */
+['state','burden','deduct','d1','d2'].forEach(id => {
+  $(id).addEventListener('input', markDirty);
+  $(id).addEventListener('change', markDirty);
+});
+$('apply').addEventListener('click', () => {
+  if ($('apply').dataset.dirty === '1') applySettings();
+});
+
+/* season date presets */
+$('seasonPresets').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.clear) { $('d1').value = ''; $('d2').value = ''; markDirty(); return; }
+  const y = seasonYear() + (+b.dataset.y || 0);
+  $('d1').value = `${y}-${b.dataset.s1}`;
+  $('d2').value = `${y}-${b.dataset.s2}`;
+  markDirty();
+});
+
+/* scenario presets */
+document.querySelectorAll('[data-preset-for]').forEach(host => {
+  const s = host.dataset.presetFor;
+  host.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    $('rate' + s).value = b.dataset.r;
+    $('hours' + s).value = b.dataset.h;
+    $('days' + s).value = b.dataset.d;
+    DAYS.forEach((_, i) => { $(`pd${s}${i}`).value = ''; });
+    render();
+  });
+});
+
+/* scenario dials — live */
+document.querySelectorAll('.card input').forEach(el => {
+  el.addEventListener('input', render);
+  el.addEventListener('change', render);
+});
+$('share').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(location.href); $('share').textContent = 'Link copied'; }
+  catch { $('share').textContent = 'Copy from the address bar'; }
+  setTimeout(() => { $('share').textContent = 'Copy shareable link'; }, 2200);
+});
+/* Print: force the limitations open and stamp what was calculated, then
+   put the page back the way the reader had it. */
+let limitsWasOpen = false;
+function beforePrint() {
+  const d = document.querySelector('details.limits');
+  limitsWasOpen = d.open; d.open = true;
+  const st = applied.state === 'CA' ? 'California' : applied.state === 'CO' ? 'Colorado' : 'Federal';
+  const range = applied.d1 && applied.d2 ? ` · ${applied.d1} to ${applied.d2}` : '';
+  $('printStamp').textContent =
+    `Printed ${new Date().toISOString().slice(0, 10)} · ${st} rules · ` +
+    `employer burden ${applied.burden}% · worker deductions ${applied.deduct}%${range}`;
+}
+function afterPrint() { document.querySelector('details.limits').open = limitsWasOpen; }
+window.addEventListener('beforeprint', beforePrint);
+window.addEventListener('afterprint', afterPrint);
+$('printBtn').addEventListener('click', () => window.print());
+
+readUrl();
+setB(bOn);
+applySettings();   /* commits any URL-supplied assumptions, then renders */
+</script>
