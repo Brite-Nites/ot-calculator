@@ -235,6 +235,9 @@
   }
   /* results stack — each block needs real air between it and the next */
   #outA, #outB { display: flex; flex-direction: column; gap: 1.7rem; }
+  /* Scenario B nests everything inside #bBody, so it is one card child and the
+     card's gap never reaches its contents. Give it the same gap itself. */
+  #bBody { display: flex; flex-direction: column; gap: 1.7rem; }
   .card.b-off { opacity: 0.55; }
   .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
   .card-head h3 {
@@ -619,8 +622,8 @@
           <input type="number" id="peopleA" class="w-days" value="1" min="1" step="1">
         </div>
       </div>
-      <div class="field" data-when="cost">
-        <label>Per-day hours <span class="hint">optional — overrides the weekly total. Matters in CA and CO.</span></label>
+      <div class="field" data-perday>
+        <label>Per-day hours <span class="hint">optional — overrides the weekly total</span></label>
         <div class="perday" id="perdayA"></div>
       </div>
       <div id="outA"></div>
@@ -632,7 +635,7 @@
         <button type="button" class="toggle-b" id="toggleB" aria-pressed="false">Turn on</button>
       </div>
       <div id="bBody" class="hidden">
-        <div class="presets" data-preset-for="B" style="margin-bottom:1.7rem">
+        <div class="presets" data-preset-for="B">
           <button type="button" data-r="18" data-h="80" data-d="6">$18 · 80 hrs</button>
           <button type="button" data-r="19" data-h="70" data-d="6">$19 · 70 hrs</button>
           <button type="button" data-r="25" data-h="45" data-d="5">$25 · 45 hrs</button>
@@ -662,8 +665,8 @@
             <input type="number" id="peopleB" class="w-days" value="1" min="1" step="1">
           </div>
         </div>
-        <div class="field" data-when="cost">
-          <label>Per-day hours <span class="hint">optional</span></label>
+        <div class="field" data-perday>
+          <label>Per-day hours <span class="hint">optional — overrides the weekly total</span></label>
           <div class="perday" id="perdayB"></div>
         </div>
         <div id="outB"></div>
@@ -828,7 +831,11 @@ function hourArray(sc, state) {
     const { hours, capped } = hoursForBudget(sc.rate, sc.budget, sc.days, state);
     return { arr: evenSplit(hours, sc.days), solved: hours, capped };
   }
-  if (sc.usingPerDay) return { arr: sc.perday.map(v => v || 0), solved: null, capped: false };
+  /* Only honour per-day where a daily rule exists. Otherwise values left in the
+     boxes would keep driving the result after the fields were hidden, and the
+     total could differ from the hours field the user can actually see. */
+  if (sc.usingPerDay && RULES[state].dailyOtAfter !== null)
+    return { arr: sc.perday.map(v => v || 0), solved: null, capped: false };
   return { arr: evenSplit(sc.hours, sc.days), solved: null, capped: false };
 }
 
@@ -964,6 +971,16 @@ function render() {
   if (period === 'range' && !weeks) setPeriod('week');
   document.querySelectorAll('[data-when]').forEach(el => {
     el.classList.toggle('hidden', el.dataset.when !== mode);
+  });
+  /* Per-day entry only changes the answer where a DAILY overtime rule exists,
+     i.e. California and Colorado. Under federal rules the shape of the week is
+     irrelevant, so the seven boxes are noise. Hidden there — and ignored, see
+     hourArray: leaving them visible-but-inert would be one thing, leaving them
+     hidden-but-live would silently compute a different total from the hours
+     field on screen. */
+  const dailyRule = RULES[state].dailyOtAfter !== null;
+  document.querySelectorAll('[data-perday]').forEach(el => {
+    el.classList.toggle('hidden', !dailyRule || mode !== 'cost');
   });
   const A = renderScenario('A', state, burden, weeks);
   const B = bOn ? renderScenario('B', state, burden, weeks) : null;
