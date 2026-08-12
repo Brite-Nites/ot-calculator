@@ -322,6 +322,37 @@
   }
   footer.foot code { font-family: var(--mono); font-size: 0.94em; }
 
+  /* ---------- info buttons ----------
+     Click, not hover: hover tooltips are unreachable on touch and invisible to
+     a keyboard. Panels live in a full-width strip below their row so opening
+     one cannot widen a field and reflow the layout. */
+  .info {
+    font-family: var(--sans); font-size: 0.66rem; font-weight: 700;
+    width: 1.05rem; height: 1.05rem; line-height: 1; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--rule-firm);
+    background: var(--sunken); color: var(--ink-mid);
+    cursor: pointer; margin-left: 0.4rem; vertical-align: middle;
+    text-transform: none; letter-spacing: 0;
+  }
+  .info:hover { color: var(--accent); border-color: var(--accent); }
+  .info[aria-expanded="true"] {
+    background: var(--accent-fill); color: #fff; border-color: var(--accent-fill);
+  }
+  .infobox {
+    font-family: var(--sans); font-size: 0.83rem; font-weight: 400;
+    text-transform: none; letter-spacing: 0; line-height: 1.5;
+    color: var(--ink-mid); background: var(--sunken);
+    border-left: 3px solid var(--accent-fill);
+    padding: 0.7rem 0.85rem; border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    max-width: 62ch; margin-top: 0.9rem;
+  }
+  .infobox b { color: var(--ink); }
+  .infobox[hidden] { display: none; }
+  .unlock-note {
+    font-size: 0.72rem; color: var(--ink-mid); margin: 0.5rem 0 0;
+  }
+
   /* ---------- presets ---------- */
   .presets { display: flex; flex-wrap: wrap; gap: 0.45rem; }
   .presets button, .chipbtn {
@@ -391,8 +422,8 @@
     /* .warn deliberately NOT hidden: it carries the "hours split evenly —
        understates California cost" caveat, and a printed sheet that drops it
        states a number as firmer than it is. */
-    .presets, #apply, .apply-hint, #share, #printBtn, .toggle-b,
-    .seg button[aria-pressed="false"], .seg button[disabled] { display: none !important; }
+    .presets, #apply, .apply-hint, #share, #printBtn, .toggle-b, .info, .infobox,
+    .unlock-note, .seg button[aria-pressed="false"], .seg button[disabled] { display: none !important; }
     /* An off scenario B otherwise prints as a faded stub carrying the words
        "Turn this on to compare two rates…" — reads as a broken document. */
     .card.b-off { display: none !important; }
@@ -450,7 +481,7 @@
     <h2>View — changes immediately</h2>
     <div class="row">
       <div class="field">
-        <label>Direction</label>
+        <label>What do you know?</label>
         <div class="seg" id="mode">
           <button type="button" data-mode="cost" aria-pressed="true">Cost from hours</button>
           <button type="button" data-mode="hours" aria-pressed="false">Hours from budget</button>
@@ -461,14 +492,25 @@
         <div class="seg" id="period">
           <button type="button" data-period="week" aria-pressed="true">Week</button>
           <button type="button" data-period="biweek" aria-pressed="false">Bi-week</button>
-          <button type="button" data-period="range" aria-pressed="false" id="periodRange" disabled
-                  title="Set and apply a date range below to enable this">Date range</button>
+          <button type="button" data-period="range" aria-pressed="false" id="periodRange" disabled>Date range</button>
         </div>
+        <p class="unlock-note">Date range unlocks once you set dates below and press Apply.</p>
       </div>
       <div class="field">
-        <label>Workweek starts</label>
+        <label>Workweek starts
+          <button type="button" class="info" aria-expanded="false" aria-controls="i-week"
+                  aria-label="Why the workweek matters">i</button>
+        </label>
         <div class="fixed-note">Monday</div>
       </div>
+    </div>
+
+    <div class="infobox" id="i-week" hidden>
+      Overtime is worked out <b>one week at a time</b>, never per pay period — so
+      the calculator has to know where a week begins. Monday matches Deputy, and
+      because your pay periods also start Monday and run 14 days, every pay
+      period is exactly two whole weeks. That is why the bi-week figure is exact
+      rather than an estimate.
     </div>
 
     <hr class="divide">
@@ -476,7 +518,7 @@
     <p class="subhead">Assumptions — press Apply to use them</p>
     <div class="row">
       <div class="field">
-        <label for="state">State ruleset</label>
+        <label for="state">Which state's overtime rules?</label>
         <select id="state" class="w-state">
           <option value="FED" selected>Federal — 40 hrs/week only</option>
           <option value="CA">California — daily OT + double time</option>
@@ -484,11 +526,17 @@
         </select>
       </div>
       <div class="field">
-        <label for="burden">Employer burden %</label>
+        <label for="burden">Employer burden %
+          <button type="button" class="info" aria-expanded="false" aria-controls="i-burden"
+                  aria-label="What is employer burden?">i</button>
+        </label>
         <input type="number" id="burden" class="w-small" value="7.65" min="0" max="100" step="0.01">
       </div>
       <div class="field">
-        <label for="deduct">Worker deductions %</label>
+        <label for="deduct">Worker deductions %
+          <button type="button" class="info" aria-expanded="false" aria-controls="i-deduct"
+                  aria-label="What are worker deductions?">i</button>
+        </label>
         <input type="number" id="deduct" class="w-small" value="18.2" min="0" max="100" step="0.1">
       </div>
       <div class="field">
@@ -516,6 +564,24 @@
       <button type="button" data-clear="1">Clear dates</button>
     </div>
 
+    <div class="infobox" id="i-burden" hidden>
+      What you pay <b>on top of</b> wages. It is not part of anyone's paycheck —
+      it is your cost for employing them at all.<br><br>
+      The 7.65% here is only the employer half of Social Security and Medicare,
+      which is fixed by law. It leaves out unemployment insurance and
+      <b>workers' comp, which is the expensive one for roof work</b>. So the real
+      number is higher than 7.65% and you should overwrite it once Braxton gives
+      you the figure.
+    </div>
+    <div class="infobox" id="i-deduct" hidden>
+      What comes <b>out of</b> the worker's check — their taxes and withholding.
+      This is the opposite direction to burden: burden is added to your cost,
+      deductions are subtracted from their pay. Gross sits between the two.<br><br>
+      18.2% is a placeholder taken from real payroll here (about 82% of gross
+      landing in pocket). It changes with the person, their W-4 and their state,
+      so treat any net figure as a ballpark.
+    </div>
+
     <p class="apply-hint" id="applyHint" data-dirty="0">Assumptions applied. Both percentages are placeholders — see the limitations at the bottom.</p>
   </section>
 
@@ -535,7 +601,8 @@
           <input type="number" id="rateA" class="w-rate" value="18" min="0" step="0.25">
         </div>
         <div class="field" data-when="cost">
-          <label for="hoursA">Hours worked / week</label>
+          <label for="hoursA">Hours worked / week
+            <span class="hint">worked, not shift length</span></label>
           <input type="number" id="hoursA" class="w-hours" value="70" min="0" step="0.25">
         </div>
         <div class="field" data-when="hours">
@@ -543,7 +610,8 @@
           <input type="number" id="budgetA" class="w-hours" value="1500" min="0" step="10">
         </div>
         <div class="field">
-          <label for="daysA">Days / week</label>
+          <label for="daysA">Days / week
+            <span class="hint">changes CA + CO</span></label>
           <input type="number" id="daysA" class="w-days" value="6" min="1" max="7" step="1">
         </div>
         <div class="field">
@@ -576,7 +644,8 @@
             <input type="number" id="rateB" class="w-rate" value="25" min="0" step="0.25">
           </div>
           <div class="field" data-when="cost">
-            <label for="hoursB">Hours worked / week</label>
+            <label for="hoursB">Hours worked / week
+            <span class="hint">worked, not shift length</span></label>
             <input type="number" id="hoursB" class="w-hours" value="45" min="0" step="0.25">
           </div>
           <div class="field" data-when="hours">
@@ -584,7 +653,8 @@
             <input type="number" id="budgetB" class="w-hours" value="1500" min="0" step="10">
           </div>
           <div class="field">
-            <label for="daysB">Days / week</label>
+            <label for="daysB">Days / week
+              <span class="hint">changes CA + CO</span></label>
             <input type="number" id="daysB" class="w-days" value="5" min="1" max="7" step="1">
           </div>
           <div class="field">
@@ -607,6 +677,7 @@
   <details class="limits">
     <summary>What this does not count — read before quoting a number</summary>
     <ol>
+      <li><b>What the words mean.</b> <b>Employer burden</b> — what you pay on top of wages; your cost, not part of their check. <b>Worker deductions</b> — what comes out of their check. <b>Real cost per hour (blended)</b> — total wages divided by hours worked, so it shows what you are actually paying per hour once overtime is mixed in. <b>With burden</b> — wages plus the employer add-ons. <b>Hours worked</b> — not shift length; meal breaks are unpaid, so a 16-hour shift with two 30-minute breaks is 15 paid hours.</li>
       <li><b>Both percentages are placeholders.</b> Employer burden defaults to <b>7.65%</b>, which is the employer FICA share only (6.2% Social Security + 1.45% Medicare) — statutory, and it excludes unemployment and workers' comp. Workers' comp is the expensive one for roof work, so the real figure is higher. Worker deductions default to <b>18.2%</b>, drawn from observed payroll at roughly 82% net-to-gross; it varies by person, filing status and state. Overwrite both once you have real numbers.</li>
       <li><b>"Federal" covers every state without a daily overtime rule</b> — VA, UT, AZ, WA, MD, DC, NC, PA, NY, CT, FL and TX among Brite's territories. Only California and Colorado have daily rules.</li>
       <li><b>Wage cost only.</b> Not included: California meal and rest break premiums (one hour of pay per violation, and shifts over 10 hours require a second meal period), productivity decline on long days, safety exposure, or turnover.</li>
@@ -810,10 +881,10 @@ function renderScenario(s, state, burden, weeks) {
 
   parts.push(`<div class="tw"><table class="mini">
     <tr><th>Hours worked, ${pLab}</th><td class="n">${hrs(w.total * sc.people * mult)}</td></tr>
-    <tr><th>Blended rate</th><td class="n">$${money(w.blended)} / hr</td></tr>
+    <tr><th>Real cost per hour <span class="hint">blended</span></th><td class="n">$${money(w.blended)} / hr</td></tr>
     <tr><th>Wages, ${pLab}</th><td class="n">$${money(wage * mult)}</td></tr>
-    <tr><th>Loaded, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
-    ${span !== null && period !== 'range' ? `<tr class="emph"><th>Loaded × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
+    <tr><th>With burden, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
+    ${span !== null && period !== 'range' ? `<tr class="emph"><th>With burden × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
     <tr><th>Worker gross, per person</th><td class="n">$${money(perPersonGross)}</td></tr>
     <tr><th>Worker net, per person <span class="hint">est.</span></th><td class="n">$${money(perPersonNet)}</td></tr>
     ${span !== null && period !== 'range' ? `<tr><th>Worker net × ${hrs(weeks)} weeks <span class="hint">est.</span></th><td class="n">$${money(w.cost * weeks * (1 - applied.deduct / 100))}</td></tr>` : ''}
@@ -939,6 +1010,18 @@ function setB(on) {
   $('toggleB').textContent = on ? 'Turn off' : 'Turn on';
   $('toggleB').setAttribute('aria-pressed', String(on));
 }
+
+/* Info panels. Delegated from document because the results region is
+   re-rendered on every keystroke; a directly-bound listener would be lost. */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.info');
+  if (!btn) return;
+  const box = document.getElementById(btn.getAttribute('aria-controls'));
+  if (!box) return;
+  const open = btn.getAttribute('aria-expanded') === 'true';
+  btn.setAttribute('aria-expanded', String(!open));
+  box.hidden = open;
+});
 
 /* view toggles — instant */
 document.querySelectorAll('#mode button').forEach(b =>
