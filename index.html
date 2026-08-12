@@ -860,7 +860,7 @@ function renderScenario(s, state, burden, weeks) {
       ? (capped
           ? `CAPPED at 16 hrs/day over ${sc.days} days — the real answer is higher than this tool models`
           : `at $${money(sc.rate)}/hr over ${sc.days} days · $${money(empl)}/wk loaded`)
-      : `wages $${money(wage * mult)} + ${burden}% burden${sc.people > 1 ? ` · ${sc.people} people` : ''}`}</p>
+      : `gross $${money(wage * mult)} + ${burden}% burden${sc.people > 1 ? ` · ${sc.people} people` : ''} — not take-home`}</p>
   </div>`);
 
   parts.push(`<div>
@@ -879,15 +879,21 @@ function renderScenario(s, state, burden, weeks) {
   const perPersonGross = w.cost * mult;
   const perPersonNet = perPersonGross * (1 - applied.deduct / 100);
 
+  /* Three different numbers exist and they are easy to confuse: cost to Brite
+     (the headline) is gross PLUS employer burden; worker gross is the middle;
+     take-home is gross MINUS their deductions. A pay stub shows the middle two,
+     so those go first, directly under the headline, to read as a ladder.
+     "Wages" used to appear as its own row and duplicated worker gross exactly
+     whenever people = 1 — the same number under two labels. */
   parts.push(`<div class="tw"><table class="mini">
+    <tr><th>Worker gross, ${pLab} <span class="hint">before deductions</span></th><td class="n">$${money(perPersonGross)}</td></tr>
+    <tr class="emph"><th>Worker takes home, ${pLab} <span class="hint">est. — after their taxes</span></th><td class="n">$${money(perPersonNet)}</td></tr>
     <tr><th>Hours worked, ${pLab}</th><td class="n">${hrs(w.total * sc.people * mult)}</td></tr>
     <tr><th>Real cost per hour <span class="hint">blended</span></th><td class="n">$${money(w.blended)} / hr</td></tr>
-    <tr><th>Wages, ${pLab}</th><td class="n">$${money(wage * mult)}</td></tr>
-    <tr><th>With burden, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
-    ${span !== null && period !== 'range' ? `<tr class="emph"><th>With burden × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
-    <tr><th>Worker gross, per person</th><td class="n">$${money(perPersonGross)}</td></tr>
-    <tr><th>Worker net, per person <span class="hint">est.</span></th><td class="n">$${money(perPersonNet)}</td></tr>
-    ${span !== null && period !== 'range' ? `<tr><th>Worker net × ${hrs(weeks)} weeks <span class="hint">est.</span></th><td class="n">$${money(w.cost * weeks * (1 - applied.deduct / 100))}</td></tr>` : ''}
+    ${sc.people > 1 ? `<tr><th>All ${sc.people} people, gross, ${pLab}</th><td class="n">$${money(wage * mult)}</td></tr>` : ''}
+    <tr><th>Cost to Brite, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
+    ${span !== null && period !== 'range' ? `<tr class="emph"><th>Cost to Brite × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
+    ${span !== null && period !== 'range' ? `<tr><th>Worker takes home × ${hrs(weeks)} weeks <span class="hint">est.</span></th><td class="n">$${money(w.cost * weeks * (1 - applied.deduct / 100))}</td></tr>` : ''}
   </table></div>`);
 
   if (state !== 'FED' && !sc.usingPerDay && mode === 'cost' && w.total > 0) {
