@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Overtime &amp; Wage Calculator — Brite Nites</title>
 
 <style>
@@ -58,6 +63,9 @@
     --dt-bg:     #ffd8d8;   /* DS --status-red-light */
     --dt-ink:    #b00b0e;   /* DS tag text — 5.54:1 on --dt-bg */
     --good:      #1a7a1a;   /* DS --status-green-tag-text — 4.67:1 */
+    --good-bg:   #d6f0d6;   /* DS --status-green-light */
+    --good-ink:  #14631a;   /* 6.12:1 on --good-bg. #1a7a1a measures 4.51:1 there,
+                               which clears AA by 0.01 — too thin a margin to ship. */
 
     --r-sm: 6px;   /* DS --radius-sm */
     --r-md: 8px;   /* DS --radius-md */
@@ -93,6 +101,8 @@
       --dt-bg:     #2f1a1a;
       --dt-ink:    #ffb3b4;
       --good:      #8cba5e;
+      --good-bg:   #18240f;
+      --good-ink:  #a5cf76;   /* 9.08:1 on --good-bg */
     }
   }
   :root[data-theme="dark"] {
@@ -118,6 +128,8 @@
     --dt-bg:     #2f1a1a;
     --dt-ink:    #ffb3b4;
     --good:      #8cba5e;
+    --good-bg:   #18240f;
+    --good-ink:  #a5cf76;
   }
 
   * { box-sizing: border-box; }
@@ -227,6 +239,107 @@
   /* ---------- scenario cards ---------- */
   .scenarios { display: grid; grid-template-columns: 1fr; gap: 1.1rem; }
   @media (min-width: 860px) { .scenarios { grid-template-columns: 1fr 1fr; } }
+  /* Three cards in a two-column grid wrap 2 + 1, which keeps every card the
+     same width as Scenario A rather than squeezing three into one row. */
+
+  /* .card sets `display`, which outranks the UA default for [hidden]. */
+  [hidden] { display: none !important; }
+
+  /* ---------- employee card: rate reframe ---------- */
+  .reframe {
+    background: var(--ot-bg); border: 1px solid var(--ot);
+    border-radius: var(--r-md); padding: 0.8rem 1rem; margin: 0;
+    /* Sized to hold one line at card width. The sentence was shortened for the
+       same reason — it wrapped mid-clause at 1rem and read badly. */
+    font-size: 0.95rem; line-height: 1.4; color: var(--ot-ink);
+  }
+  .reframe b { color: var(--ot-ink); }
+
+  /* ---------- employee card: readability ----------
+     Audience is field technicians, some reading English as a second language
+     and some who read poorly. Three things follow from that, and they override
+     the house style used on Scenario A and B:
+       1. No ALL CAPS. Uppercase strips word shape, which is what a struggling
+          reader leans on most. Sentence case everywhere on this card.
+       2. Bigger type. The mini table is 0.85rem elsewhere; here it is 0.98rem.
+       3. Colour carries meaning on its own, for anyone who skips the words:
+          green is more money, muted grey is the lesser option. Deliberately
+          NOT red — red already means double-time in the bar legend above,
+          where it is the BEST money. Reusing it for "worse" would contradict
+          the same card. */
+  /* No <h3> on this card — the toggle is the label — so the head has a single
+     child and space-between would park it on the left. */
+  #cardE .card-head { justify-content: flex-end; }
+
+  /* Vertical budget. Everything on this card has to land in one screenshot and
+     NOTHING may be dropped to get there, so the whole card runs on a tighter
+     rhythm than A and B rather than losing a row. Measured, not guessed:
+     542x919 -> 542x764 at desktop width (ratio 1:1.41, which fills a phone
+     screen well when the image is sent), and 358x988 -> 358x825 at iPhone
+     content width. Table type is NOT taken below 0.92rem — legibility for a
+     second-language reader is this card's whole purpose and outranks height.
+     Everything given up here is whitespace and chrome.
+
+     These rules also carry the readability overrides for the card (sentence
+     case, larger-than-house type). Both concerns live in ONE block on purpose:
+     they were split before, the density half sat earlier in the sheet, and the
+     readability half silently won every conflict on specificity ties. */
+  #cardE { padding: 0.8rem 0.9rem; gap: 0.6rem; }
+  #cardE #eBody, #cardE #outE { gap: 0.6rem; }
+
+  #cardE table.mini { font-size: 0.92rem; }
+  #cardE table.mini th {
+    font-size: 0.9rem; font-weight: 600; letter-spacing: 0;
+    text-transform: none; color: var(--ink);
+  }
+  #cardE table.mini th .hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  #cardE table.mini td.n { font-size: 0.94rem; }
+  #cardE table.mini th, #cardE table.mini td { padding: 0.22rem 0.1rem; line-height: 1.25; }
+
+  #cardE .bignum { font-size: 1.95rem; line-height: 1.05; }
+  #cardE .bignum.season { font-size: 1.5rem; }
+  #cardE .bignum-label {
+    font-size: 0.88rem; font-weight: 650; letter-spacing: 0;
+    text-transform: none; color: var(--ink); margin-bottom: 0.1rem;
+  }
+  #cardE .bignum-sub { margin-top: 0.25rem; font-size: 0.78rem; }
+
+  #cardE .bar { height: 0.95rem; }
+  #cardE .legend { font-size: 0.7rem; margin-top: 0.35rem; gap: 0.25rem 0.5rem; }
+  #cardE .legend span { padding: 0.12em 0.45em; }
+  #cardE .reframe { padding: 0.45rem 0.7rem; font-size: 0.88rem; }
+
+  /* Two weights of the same meaning, so green always reads as "more money":
+     a filled row for the headline figure, green text alone for a delta. */
+  #cardE tr.pop th, #cardE tr.pop td {
+    background: var(--good-bg); color: var(--good-ink);
+    font-weight: 700; border-bottom-color: var(--good-bg);
+  }
+  #cardE tr.pop th { border-radius: var(--r-sm) 0 0 var(--r-sm); padding-left: 0.55rem; }
+  #cardE tr.pop td { border-radius: 0 var(--r-sm) var(--r-sm) 0; padding-right: 0.55rem; }
+  #cardE tr.pop th .hint { color: var(--good-ink); font-weight: 500; }
+  #cardE tr.more th, #cardE tr.more td { color: var(--good); font-weight: 700; }
+  /* muted = the option that pays less. */
+  #cardE tr.less th, #cardE tr.less td { color: var(--ink-mute); }
+  /* Yellow means one thing on this card: the rate reframe. The closing caveat
+     gets a neutral treatment so it does not compete with it. */
+  /* One size down from the card's body copy, italic, neutral fill so the yellow
+     reframe above stays the only yellow. Single rule — this had a duplicate in
+     the density block that lost on source order. */
+  #cardE .warn {
+    border-left-color: var(--rule-firm); background: var(--sunken);
+    padding: 0.45rem 0.7rem; font-size: 0.86rem; font-style: italic;
+  }
+  /* The bold lead-in stays upright so it still reads as a heading. */
+  #cardE .warn b { font-style: normal; }
+
+  /* Season range. The joiner needs real air on both sides; at the default
+     .cur spacing the "to" collided with both figures. */
+  .bignum.season { font-size: 2rem; }
+  .bignum .joiner {
+    font-size: 1.05rem; font-weight: 500; color: var(--ink-mute);
+    margin: 0 0.55em; vertical-align: 0.18em;
+  }
 
   .card {
     background: var(--surface); border: 1px solid var(--rule);
@@ -234,10 +347,10 @@
     display: flex; flex-direction: column; gap: 1.7rem;
   }
   /* results stack — each block needs real air between it and the next */
-  #outA, #outB { display: flex; flex-direction: column; gap: 1.7rem; }
+  #outA, #outB, #outE { display: flex; flex-direction: column; gap: 1.7rem; }
   /* Scenario B nests everything inside #bBody, so it is one card child and the
      card's gap never reaches its contents. Give it the same gap itself. */
-  #bBody { display: flex; flex-direction: column; gap: 1.7rem; }
+  #bBody, #eBody { display: flex; flex-direction: column; gap: 1.7rem; }
   .card.b-off { opacity: 0.55; }
   .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
   .card-head h3 {
@@ -451,7 +564,7 @@
     .panel, .card, details.limits { break-inside: avoid; box-shadow: none; }
     .scenarios { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
     .card { gap: 1rem; padding: 0.8rem; }
-    #outA, #outB { gap: 1rem; }
+    #outA, #outB, #outE { gap: 1rem; }
     .bignum { font-size: 1.7rem; }
     .verdict { background: var(--accent-bg); break-inside: avoid; }
 
@@ -468,6 +581,8 @@
     a[href^="http"]::after { content: ""; }
   }
 </style>
+</head>
+<body>
 
 <div class="wrap">
 
@@ -673,6 +788,16 @@
       </div>
       <p id="bHint" class="bignum-sub" style="margin:0">Turn this on to compare two rates side by side — for example $18 at 70 hours against $25 at 45.</p>
     </div>
+
+    <div class="card b-off" id="cardE">
+      <div class="card-head">
+        <button type="button" class="toggle-b" id="toggleE" aria-pressed="false">Employee view</button>
+      </div>
+      <div id="eBody" class="hidden">
+        <div id="outE"></div>
+      </div>
+      <p id="eHint" class="bignum-sub" style="margin:0">Turn this on for the version you show a new hire. Mirrors Scenario A; turn on B to show the rate trade-off.</p>
+    </div>
   </div>
 
   <div id="compare"></div>
@@ -680,16 +805,16 @@
   <details class="limits">
     <summary>What this does not count — read before quoting a number</summary>
     <ol>
-      <li><b>What the words mean.</b> <b>Employer burden</b> — what you pay on top of wages; your cost, not part of their check. <b>Worker deductions</b> — what comes out of their check. <b>Real cost per hour (blended)</b> — total wages divided by hours worked, so it shows what you are actually paying per hour once overtime is mixed in. <b>With burden</b> — wages plus the employer add-ons. <b>Hours worked</b> — not shift length; meal breaks are unpaid, so a 16-hour shift with two 30-minute breaks is 15 paid hours.</li>
+      <li><b>What the words mean.</b> <b>Employer burden</b> — what you pay on top of wages; your cost, not part of their check. <b>Worker deductions</b> — what comes out of their check. <b>Average wage per hour</b> — total wages divided by hours worked, so it shows what you are actually paying per hour once overtime is mixed in. Deliberately NOT called a <i>blended rate</i>: under the FLSA that term means the weighted average of two or more <i>base</i> rates and it excludes the overtime premium, so it is an input to the overtime calculation. This figure includes the premium, so it is an output. Calling it blended invites the reading that overtime was owed at 1.5x this number. <b>With burden</b> — wages plus the employer add-ons. <b>Hours worked</b> — not shift length; meal breaks are unpaid, so a 16-hour shift with two 30-minute breaks is 15 paid hours.</li>
       <li><b>Both percentages are placeholders.</b> Employer burden defaults to <b>7.65%</b>, which is the employer FICA share only (6.2% Social Security + 1.45% Medicare) — statutory, and it excludes unemployment and workers' comp. Workers' comp is the expensive one for roof work, so the real figure is higher. Worker deductions default to <b>18.2%</b>, drawn from observed payroll at roughly 82% net-to-gross; it varies by person, filing status and state. Overwrite both once you have real numbers.</li>
-      <li><b>"Federal" covers every state without a daily overtime rule</b> — VA, UT, AZ, WA, MD, DC, NC, PA, NY, CT, FL and TX among Brite's territories. Only California and Colorado have daily rules.</li>
+      <li><b>"Federal" covers every state without a daily overtime rule</b> — VA, UT, AZ, WA, MD, DC, NC, PA, NY, CT, FL and TX among Brite Nites's territories. Only California and Colorado have daily rules.</li>
       <li><b>Wage cost only.</b> Not included: California meal and rest break premiums (one hour of pay per violation, and shifts over 10 hours require a second meal period), productivity decline on long days, safety exposure, or turnover.</li>
       <li><b>A 10% productivity loss erases the whole cheap-labour-plus-overtime advantage.</b> $1,800 ÷ $25.00 = 72 effective hours. If 80 nominal hours produce fewer than 72 hours of real output, an $18 worker at 80 hours no longer beats a $25 worker at 40.</li>
       <li><b>Enter hours <em>worked</em>, not shift length.</b> Meal breaks are unpaid when properly taken, so a 16-hour shift with two 30-minute meals is 15 paid hours. In California that's $396 against $360 at $18/hr — $36 a day.</li>
       <li><b>Splitting hours evenly across days understates California and Colorado cost, always.</b> Double-time and daily overtime trigger on individual long days, and averaging minimises how many hours clear those lines. Measured: 66 hours over 6 days is $1,422 evenly split against $1,476 ragged — 3.8% low. Use the per-day boxes for real weeks.</li>
       <li><b>Colorado's 12-consecutive-hours rule is not modelled.</b> Colorado owes overtime after 12 consecutive hours even when they span two calendar days. That needs shift start and end times, not daily totals.</li>
       <li><b>This page cannot track law changes.</b> It is self-contained with no connection to anything. What moves every January 1: the California minimum wage. Law monitoring is a service — your payroll provider, an employment attorney, or CalChamber alerts.</li>
-      <li><b>Validation.</b> The federal path is checked against 29 periods of real Brite payroll, 26 matching to the cent. California and Colorado are built from published state rules and checked against hand-computed cases only — no Brite paycheck exists to test them against.</li>
+      <li><b>Validation.</b> The federal path is checked against 29 periods of real Brite Nites payroll, 26 matching to the cent. California and Colorado are built from published state rules and checked against hand-computed cases only — no Brite Nites paycheck exists to test them against.</li>
     </ol>
   </details>
 
@@ -749,8 +874,11 @@ function hoursForBudget(rate, budget, days, key, maxPerDay = 16) {
 const $ = id => document.getElementById(id);
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const money = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/* Season totals are a pitch number, not a paycheck. Cents on a five-figure
+   estimate read as false precision. */
+const money0 = n => Math.round(n).toLocaleString('en-US');
 const hrs = n => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
-let mode = 'cost', bOn = false, period = 'week';
+let mode = 'cost', bOn = false, eOn = false, period = 'week';
 
 /* Assumptions are staged, not live — they take effect on Apply.
    View toggles (direction, period) are instant. */
@@ -839,6 +967,146 @@ function hourArray(sc, state) {
   return { arr: evenSplit(sc.hours, sc.days), solved: null, capped: false };
 }
 
+/* The employee card. Deliberately NOT a view mode over Scenario A — A and B
+   stay exactly as they are; this is a third card you turn on alongside them.
+   It MIRRORS Scenario A rather than carrying its own inputs, because the rate
+   and hours are already typed once at the top and a second set would drift.
+   Season length comes from the applied date range, or 8 weeks.
+
+   What it must never show: cost to Brite Nites, employer burden, or the
+   after-tax estimate. Mike wants the net figure to hand if a hire asks, so it
+   lives in Scenario A, off the card he screenshots.
+
+   Two things carry the pitch. The average-pay-per-hour figure, because these
+   guys anchor on hourly and the honest answer to "$22 is low" is that $22 with
+   overtime averages $26.23. Never label that a "blended rate" — see the
+   glossary; the FLSA meaning is an input to the OT calculation, not an output
+   of it, and the mislabel implies OT was owed at 1.5x it. And the Scenario B trade-off, which is the real conversation: a guy
+   asking $25 gets it, capped at 40 hours, and takes home less. */
+function renderEmployee(state, A, B, weeks) {
+  const rate  = A.sc.rate;
+  const w     = A.w;
+  const hours = w.total;
+  /* With per-day boxes in use, sc.days is just the input field and can disagree
+     with the week actually entered — [16,16,16,0,0,0,0] is three days, not six.
+     The hero comes from the real array, so the band and the per-day row have to
+     as well, or they would describe a different week than the headline. */
+  const days  = A.sc.usingPerDay
+    ? Math.max(1, A.arr.filter(h => h > 0).length)
+    : A.sc.days;
+  /* Floor, not round: a 8.71-week range rounded up to 9 would inflate the
+     season total by 3%. On a number quoted to a hire, err low. */
+  const wkE   = Math.max(1, Math.floor(weeks || 8));
+
+  if (!(rate > 0 && hours > 0)) {
+    $('outE').innerHTML = '<p class="bignum-sub" style="margin:0">Enter a rate and hours in Scenario A.</p>';
+    return;
+  }
+
+  const loH = Math.max(40, hours - 15);
+  /* Never imply more than the 16 hrs/day this tool models anywhere else. */
+  const hiH = Math.min(hours + 5, days * 16);
+  const lo  = computeWeek(rate, evenSplit(loH, days), state);
+  const hi  = computeWeek(rate, evenSplit(hiH, days), state);
+  const showLo = loH < hours - 0.01;   /* at 40 hrs the floor IS the pace */
+  const showHi = hiH > hours + 0.01;
+  const seg = t => w.total > 0 ? (t / w.total * 100) : 0;
+  const out = [];
+
+  /* Hero first. Everything else is support. */
+  out.push(`<div>
+    <p class="bignum-label">You earn, per week</p>
+    <p class="bignum"><span class="cur">$</span>${money(w.cost)}</p>
+    <p class="bignum-sub">${hrs(hours)} hours over ${days} days</p>
+  </div>`);
+
+  out.push(`<div>
+    <div class="bar">
+      ${w.reg ? `<div class="s-reg" style="width:${seg(w.reg)}%"></div>` : ''}
+      ${w.ot  ? `<div class="s-ot"  style="width:${seg(w.ot)}%"></div>`  : ''}
+      ${w.dt  ? `<div class="s-dt"  style="width:${seg(w.dt)}%"></div>`  : ''}
+    </div>
+    <div class="legend">
+      <span class="k-reg"><i></i>Regular ${hrs(w.reg)} hrs @ $${money(rate)}</span>
+      ${w.ot ? `<span class="k-ot"><i></i>OT ${hrs(w.ot)} hrs @ $${money(rate * 1.5)}</span>` : ''}
+      ${w.dt ? `<span class="k-dt"><i></i>Double ${hrs(w.dt)} hrs @ $${money(rate * 2)}</span>` : ''}
+    </div>
+  </div>`);
+
+  /* Shortened deliberately: the long form wrapped mid-sentence at card width
+     and Mike wants this on one line. */
+  /* Mike's own phrasing on the phone: "your blended rate ($22 base + OT) would
+     be $26.23". Written as arithmetic, not as "blended rate": + and = read the
+     same in any language, and "blended rate" is both jargon and, under the
+     FLSA, the wrong term for this number. */
+  out.push(`<p class="reframe">$${money(rate)} base + overtime = <b>$${money(w.blended)}/hr</b></p>`);
+
+  /* "Only 40 hours" runs through the rule engine rather than 40 x rate, so it
+     is right in California too, where 40 hours worked as 4 x 10 owes daily
+     overtime and plain multiplication would understate it. */
+  const flat40 = computeWeek(rate, evenSplit(40, Math.min(days, 5)), state);
+  out.push(`<div class="tw"><table class="mini">
+    <tr class="emph"><th>Pay per week</th><td class="n">$${money(w.cost)}</td></tr>
+    <tr class="emph"><th>Pay every 2 weeks</th><td class="n">$${money(w.cost * 2)}</td></tr>
+    <tr><th>Pay per day <span class="hint">(${days} days)</span></th><td class="n">$${money(w.cost / days)}</td></tr>
+    <tr class="pop"><th>Average pay per hour <span class="hint">(base + overtime)</span></th><td class="n">$${money(w.blended)}</td></tr>
+    <tr class="less"><th>Only 40 hours a week</th><td class="n">$${money(flat40.cost)}</td></tr>
+  </table></div>`);
+
+  /* The higher-rate trade-off, from Scenario B. This is the thing Mike says on
+     the phone — "$25 is fine, but you're capped at 40" — and a preset chip
+     could only imply it. Only rendered when B is on, since B supplies the
+     comparison rate and hours. */
+  if (B) {
+    const dW = w.cost - B.w.cost;
+    /* The heading used to hardcode "Higher rate, fewer hours", which is
+       backwards the moment B holds a lower rate — its own default preset is
+       $18 at 80. Read the direction off B instead of asserting it. */
+    const bHigher = B.sc.rate > rate;
+    const bFewer  = B.w.total < hours;
+    const head = bHigher && bFewer ? 'Higher rate, fewer hours'
+               : bHigher           ? 'Higher rate'
+               : bFewer            ? 'Fewer hours'
+                                   : 'Another option';
+    /* "cap" only when B really is the shorter week — otherwise it is a lie. */
+    const bCap = bFewer ? ' cap' : '';
+    out.push(`<div>
+      <p class="bignum-label" style="margin-bottom:0.2rem">${head}</p>
+      <div class="tw"><table class="mini">
+        <tr class="less"><th>$${money(B.sc.rate)}/hr at ${hrs(B.w.total)} hrs${bCap}</th><td class="n">$${money(B.w.cost)}</td></tr>
+        <tr class="emph"><th>$${money(rate)}/hr at ${hrs(hours)} hrs</th><td class="n">$${money(w.cost)}</td></tr>
+        ${Math.abs(dW) > 0.005 ? `<tr class="${dW > 0 ? 'more' : 'less'}"><th>You make ${dW > 0 ? 'more' : 'less'} per week</th><td class="n">${dW > 0 ? '+' : '&minus;'}$${money(Math.abs(dW))}</td></tr>` : ''}
+      </table></div>
+    </div>`);
+  }
+
+  out.push(`<div>
+    <p class="bignum-label" style="margin-bottom:0.2rem">Slow week, busy week</p>
+    <div class="tw"><table class="mini">
+      ${showLo ? `<tr class="less"><th>Slow week <span class="hint">(${hrs(loH)} hours)</span></th><td class="n">$${money(lo.cost)}</td></tr>` : ''}
+      <tr class="emph"><th>Your week <span class="hint">(${hrs(hours)} hours)</span></th><td class="n">$${money(w.cost)}</td></tr>
+      ${showHi ? `<tr><th>Busy week <span class="hint">(${hrs(hiH)} hours)</span></th><td class="n">$${money(hi.cost)}</td></tr>` : ''}
+    </table></div>
+  </div>`);
+
+  out.push(`<div>
+    <p class="bignum-label">Total for ${hrs(wkE)} weeks</p>
+    <p class="bignum season"><span class="cur">$</span>${money0((showLo ? lo.cost : w.cost) * wkE)}<span
+      class="joiner">to</span><span class="cur">$</span>${money0((showHi ? hi.cost : w.cost) * wkE)}</p>
+  </div>`);
+
+  if (A.sc.people > 1) {
+    out.push(`<p class="bignum-sub" style="margin:0">This is one person's pay.
+      Scenario A is showing ${A.sc.people} people.</p>`);
+  }
+
+  out.push(`<div class="warn"><b>Hours not guaranteed.</b>
+    Hours change by territory, by week and by weather. Numbers above show what
+    ${hrs(hours)} hours a week pays.${A.capped ? ' These hours hit the 16-hour daily limit this tool models, so the real number is higher.' : ''}</div>`);
+
+  $('outE').innerHTML = out.join('');
+}
+
 function renderScenario(s, state, burden, weeks) {
   const sc = readScenario(s);
   const { arr, solved, capped } = hourArray(sc, state);
@@ -859,7 +1127,7 @@ function renderScenario(s, state, burden, weeks) {
   const parts = [];
 
   parts.push(`<div>
-    <p class="bignum-label">${mode === 'hours' ? 'Max hours affordable' : `Cost to Brite, per ${pLab}`}</p>
+    <p class="bignum-label">${mode === 'hours' ? 'Max hours affordable' : `Cost to Brite Nites, per ${pLab}`}</p>
     <p class="bignum">${mode === 'hours'
       ? `${hrs(solved)}<span class="cur" style="margin-left:.25em">hrs</span>`
       : `<span class="cur">$</span>${money(empl * mult)}`}</p>
@@ -886,7 +1154,7 @@ function renderScenario(s, state, burden, weeks) {
   const perPersonGross = w.cost * mult;
   const perPersonNet = perPersonGross * (1 - applied.deduct / 100);
 
-  /* Three different numbers exist and they are easy to confuse: cost to Brite
+  /* Three different numbers exist and they are easy to confuse: cost to Brite Nites
      (the headline) is gross PLUS employer burden; worker gross is the middle;
      take-home is gross MINUS their deductions. A pay stub shows the middle two,
      so those go first, directly under the headline, to read as a ladder.
@@ -896,10 +1164,10 @@ function renderScenario(s, state, burden, weeks) {
     <tr><th>Worker gross, ${pLab} <span class="hint">before deductions</span></th><td class="n">$${money(perPersonGross)}</td></tr>
     <tr class="emph"><th>Worker takes home, ${pLab} <span class="hint">est. — after their taxes</span></th><td class="n">$${money(perPersonNet)}</td></tr>
     <tr><th>Hours worked, ${pLab}</th><td class="n">${hrs(w.total * sc.people * mult)}</td></tr>
-    <tr><th>Real cost per hour <span class="hint">blended</span></th><td class="n">$${money(w.blended)} / hr</td></tr>
+    <tr><th>Average wage per hour <span class="hint">(wages, not employer cost)</span></th><td class="n">$${money(w.blended)} / hr</td></tr>
     ${sc.people > 1 ? `<tr><th>All ${sc.people} people, gross, ${pLab}</th><td class="n">$${money(wage * mult)}</td></tr>` : ''}
-    <tr><th>Cost to Brite, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
-    ${span !== null && period !== 'range' ? `<tr class="emph"><th>Cost to Brite × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
+    <tr><th>Cost to Brite Nites, ${oLab}</th><td class="n">$${money(oVal)}</td></tr>
+    ${span !== null && period !== 'range' ? `<tr class="emph"><th>Cost to Brite Nites × ${hrs(weeks)} weeks</th><td class="n">$${money(span)}</td></tr>` : ''}
     ${span !== null && period !== 'range' ? `<tr><th>Worker takes home × ${hrs(weeks)} weeks <span class="hint">est.</span></th><td class="n">$${money(w.cost * weeks * (1 - applied.deduct / 100))}</td></tr>` : ''}
   </table></div>`);
 
@@ -910,7 +1178,7 @@ function renderScenario(s, state, burden, weeks) {
   }
 
   $('out' + s).innerHTML = parts.join('');
-  return { sc, w, wage, empl, solved };
+  return { sc, w, wage, empl, solved, arr, capped };
 }
 
 function renderCompare(A, B, state, burden) {
@@ -925,7 +1193,7 @@ function renderCompare(A, B, state, burden) {
     const gap = Math.abs(A.empl - B.empl) * mult;
     const aH = A.w.total * A.sc.people, bH = B.w.total * B.sc.people;
     out.push(`<p class="lead">Scenario ${cheaper} costs <span class="num">$${money(gap)}</span> less per ${pLab}.</p>`);
-    out.push(`<p class="small">A delivers <span class="num">${hrs(aH)}</span> hours at a blended
+    out.push(`<p class="small">A delivers <span class="num">${hrs(aH)}</span> hours at an average
       <span class="num">$${money(A.w.blended)}</span>/hr. B delivers <span class="num">${hrs(bH)}</span> hours at
       <span class="num">$${money(B.w.blended)}</span>/hr.</p>`);
 
@@ -947,7 +1215,7 @@ function renderCompare(A, B, state, burden) {
           <span class="num">${hrs(X.w.total * X.sc.people * mult)}</span> hours from <span class="num">${bodies}</span> people
           at 40 hrs each costs <span class="num">$${money(alt * mult)}</span> —
           <span class="num">$${money(save)}</span> less. Overtime only wins once the fixed cost of an extra body
-          (recruiting, training, housing, per diem, truck seat) exceeds that. Brite can't currently quantify it.</p>`);
+          (recruiting, training, housing, per diem, truck seat) exceeds that. Brite Nites can't currently quantify it.</p>`);
       }
     });
   } else {
@@ -984,6 +1252,7 @@ function render() {
   });
   const A = renderScenario('A', state, burden, weeks);
   const B = bOn ? renderScenario('B', state, burden, weeks) : null;
+  if (eOn) renderEmployee(state, A, B, weeks);
   renderCompare(A, B, state, burden);
   writeUrl();
 }
@@ -994,7 +1263,7 @@ const URL_KEYS = ['state','burden','deduct','d1','d2','rateA','hoursA','budgetA'
 function writeUrl() {
   const p = new URLSearchParams();
   URL_KEYS.forEach(k => { const el = $(k); if (el && el.value !== '') p.set(k, el.value); });
-  p.set('mode', mode); p.set('period', period); if (bOn) p.set('b', '1');
+  p.set('mode', mode); p.set('period', period); if (bOn) p.set('b', '1'); if (eOn) p.set('e', '1');
   ['A','B'].forEach(s => DAYS.forEach((_, i) => {
     const v = $(`pd${s}${i}`).value; if (v !== '') p.set(`pd${s}${i}`, v);
   }));
@@ -1014,6 +1283,7 @@ function readUrl() {
   if (p.get('mode') === 'hours') setMode('hours');
   if (p.get('period') === 'biweek') setPeriod('biweek');
   if (p.get('b') === '1') setB(true);
+  if (p.get('e') === '1') setE(true);
 }
 function setMode(m) {
   mode = m;
@@ -1034,6 +1304,17 @@ function setB(on) {
   $('toggleB').setAttribute('aria-pressed', String(on));
 }
 
+function setE(on) {
+  eOn = on;
+  $('eBody').classList.toggle('hidden', !on);
+  $('eHint').classList.toggle('hidden', on);
+  $('cardE').classList.toggle('b-off', !on);
+  /* The button is the card's label now, so its text stays put. State reads from
+     aria-pressed for assistive tech, and from the filled style plus the card
+     body appearing for everyone else. */
+  $('toggleE').setAttribute('aria-pressed', String(on));
+}
+
 /* Info panels. Delegated from document because the results region is
    re-rendered on every keystroke; a directly-bound listener would be lost. */
 document.addEventListener('click', e => {
@@ -1052,6 +1333,9 @@ document.querySelectorAll('#mode button').forEach(b =>
 document.querySelectorAll('#period button').forEach(b =>
   b.addEventListener('click', () => { setPeriod(b.dataset.period); render(); }));
 $('toggleB').addEventListener('click', () => { setB(!bOn); render(); });
+$('toggleE').addEventListener('click', () => { setE(!eOn); render(); });
+/* The employee card has no inputs of its own — it mirrors Scenario A — so it
+   needs no listeners beyond its on/off toggle. */
 
 /* assumptions — staged until Apply */
 ['state','burden','deduct','d1','d2'].forEach(id => {
@@ -1082,7 +1366,9 @@ document.querySelectorAll('[data-preset-for]').forEach(host => {
     $('rate' + s).value = b.dataset.r;
     $('hours' + s).value = b.dataset.h;
     $('days' + s).value = b.dataset.d;
-    DAYS.forEach((_, i) => { $(`pd${s}${i}`).value = ''; });
+    /* Not every scenario has per-day boxes, so tolerate a missing element
+       rather than throwing on .value. */
+    DAYS.forEach((_, i) => { const pd = $(`pd${s}${i}`); if (pd) pd.value = ''; });
     render();
   });
 });
@@ -1118,3 +1404,5 @@ readUrl();
 setB(bOn);
 applySettings();   /* commits any URL-supplied assumptions, then renders */
 </script>
+</body>
+</html>
