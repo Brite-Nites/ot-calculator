@@ -591,3 +591,29 @@
     background: var(--surface); color: var(--ink);
   }
   .solver button[disabled] { opacity: 0.4; cursor: default; }
+
+  /* ---------- inline editing ----------
+     Fields that live inside the sentence they change: the hours in the hero,
+     the base and blended rates in the reframe line, weeks/months in the season
+     total. Styled to read as text with a dashed underline, not as a form
+     control, so the card still looks like a statement rather than a form.
+
+     type=text + inputmode=decimal on purpose: the card re-renders on every
+     keystroke, and selectionStart - which is how the caret survives that - is
+     not readable on type=number in every browser. */
+  .ie {
+    font: inherit; color: inherit; background: transparent;
+    border: 0; border-bottom: 1px dashed currentColor;
+    padding: 0 0.08em; text-align: center; border-radius: 2px;
+  }
+  .ie:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+  .ie:focus {
+    outline: 2px solid var(--rule-firm); outline-offset: 1px;
+    border-bottom-color: transparent;
+  }
+  .ie-hrs  { width: 2.7em; }
+  .ie-rate { width: 4.1em; }
+  .ie-wk   { width: 2.2em; }
+  .ie-mo   { width: 2.6em; }
+  /* The hero's hours sit in small grey type; the rates sit in the gold band. */
+  .bignum-sub .ie { font-family: var(--mono); }
