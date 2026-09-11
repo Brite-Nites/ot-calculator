@@ -1003,13 +1003,6 @@ function renderEmployee(state, A, B, weeks) {
     return;
   }
 
-  const loH = Math.max(40, hours - 15);
-  /* Never imply more than the 16 hrs/day this tool models anywhere else. */
-  const hiH = Math.min(hours + 5, days * 16);
-  const lo  = computeWeek(rate, evenSplit(loH, days), state);
-  const hi  = computeWeek(rate, evenSplit(hiH, days), state);
-  const showLo = loH < hours - 0.01;   /* at 40 hrs the floor IS the pace */
-  const showHi = hiH > hours + 0.01;
   const seg = t => w.total > 0 ? (t / w.total * 100) : 0;
   const out = [];
 
@@ -1080,19 +1073,41 @@ function renderEmployee(state, A, B, weeks) {
     </div>`);
   }
 
+  /* Named weeks a crew member actually recognises, at fixed hours rather than a
+     moving +/- off whatever was typed. Training is the first two weeks at 40,
+     strike is teardown, busy is the ceiling and is explicitly not a promise.
+     Sorted by hours so the ladder reads in order whatever gets entered - at 80
+     hours "Your week" belongs at the bottom of the list, not the middle. */
+  const cap16 = days * 16;   /* never imply more than the 16 hrs/day modelled elsewhere */
+  const named = [
+    { label: 'Training x2 weeks', h: 40,                  wk: flat40 },
+    { label: 'Your week',         h: hours,               wk: w, me: true },
+    { label: 'Strike',            h: Math.min(65, cap16)            },
+    { label: 'Busy week',         h: Math.min(72, cap16), note: 'not promised &mdash; as needed' },
+  ];
+  named.forEach(r => { if (!r.wk) r.wk = computeWeek(rate, evenSplit(r.h, days), state); });
+  /* Your week wins ties, so it sits above a strike week paying the same. */
+  named.sort((a, b) => (a.h - b.h) || (a.me ? -1 : b.me ? 1 : 0));
+
   out.push(`<div>
-    <p class="bignum-label" style="margin-bottom:0.2rem">Slow week, busy week</p>
+    <p class="bignum-label" style="margin-bottom:0.2rem">Other weeks</p>
     <div class="tw"><table class="mini">
-      ${showLo ? `<tr class="less"><th>Slow week <span class="hint">(${hrs(loH)} hours)</span></th><td class="n">$${money(lo.cost)}</td></tr>` : ''}
-      <tr class="emph"><th>Your week <span class="hint">(${hrs(hours)} hours)</span></th><td class="n">$${money(w.cost)}</td></tr>
-      ${showHi ? `<tr><th>Busy week <span class="hint">(${hrs(hiH)} hours)</span></th><td class="n">$${money(hi.cost)}</td></tr>` : ''}
+      ${named.map(r => `<tr class="${r.me ? 'emph' : (r.h < hours - 0.01 ? 'less' : '')}"><th>${r.label} <span class="hint">(${hrs(r.h)} hours)</span>${r.note ? `<br><span class="hint">${r.note}</span>` : ''}</th><td class="n">$${money(r.wk.cost)}</td></tr>`).join('')}
     </table></div>
   </div>`);
 
+  /* Only the first two weeks are training, not all eight. Bounding the season
+     with eight 40-hour weeks would quote a floor nobody will ever actually
+     earn, so both ends carry the two training weeks and vary the rest. */
+  const trainWk = Math.min(2, wkE);
+  const restWk  = wkE - trainWk;
+  const busyWk  = named.find(r => r.label === 'Busy week');
+  /* If somebody enters more than 72, their own week is the ceiling, not "busy". */
+  const topCost = Math.max(busyWk ? busyWk.wk.cost : 0, w.cost);
   out.push(`<div>
     <p class="bignum-label">Total for ${hrs(wkE)} weeks</p>
-    <p class="bignum season"><span class="cur">$</span>${money0((showLo ? lo.cost : w.cost) * wkE)}<span
-      class="joiner">to</span><span class="cur">$</span>${money0((showHi ? hi.cost : w.cost) * wkE)}</p>
+    <p class="bignum season"><span class="cur">$</span>${money0(trainWk * flat40.cost + restWk * w.cost)}<span
+      class="joiner">to</span><span class="cur">$</span>${money0(trainWk * flat40.cost + restWk * topCost)}</p>
   </div>`);
 
   if (A.sc.people > 1) {
