@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offer Builder — Brite Nites</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Brite Nites · Field Operations</p>
+    <h1>Offer Builder</h1>
+    <p class="sub">What an installer takes home. Set base pay and hours; everything else follows.</p>
+    <span class="stamp">rates current as of January 2026 · verify before relying on this</span>
+    <p class="sub" style="margin-top:0.5rem"><a href="index.html">&larr; Full calculator</a> — employer cost, burden, and state rules live there.</p>
+  </header>
+
+  <section class="panel">
+    <h2>The offer</h2>
+    <div class="row">
+      <div class="field">
+        <label for="rate">Base pay $/hr</label>
+        <input type="number" id="rate" class="w-rate" value="17" min="0" step="0.25">
+      </div>
+      <div class="field">
+        <label for="hours">Hours worked / week
+          <span class="hint">worked, not shift length</span></label>
+        <input type="number" id="hours" class="w-hours" value="72" min="0" step="0.25">
+      </div>
+    </div>
+
+    <div class="solver">
+      <span>Work backwards: blended</span>
+      <label for="blend">$<input type="number" id="blend" class="w-rate" step="0.25" min="0" placeholder="19.00"></label>
+      <span>/hr needs base pay of</span>
+      <span class="sv-out" id="blendOut">&mdash;</span>
+      <button type="button" id="blendUse" disabled>Use it</button>
+    </div>
+
+    <div class="row" style="margin-top:0.75rem">
+      <div class="field">
+        <label for="wk">Season length — weeks</label>
+        <input type="number" id="wk" class="w-days" value="8" min="1" max="52" step="1">
+      </div>
+      <div class="field">
+        <label for="mo">or months</label>
+        <input type="number" id="mo" class="w-days" value="1.8" min="0.25" step="0.25">
+      </div>
+    </div>
+    <p class="apply-hint" data-dirty="0">Six days a week, capped at 12 hours a day — the company rule.
+      At 12 or under, Federal, California and Colorado all pay the same, so there is no state to pick.</p>
+  </section>
+
+  <div class="scenarios">
+    <div class="card">
+      <div class="card-head"><h3>What the installer sees</h3></div>
+      <div id="out"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script>
+/* Offer Builder — the TM-facing cut of the employee card.
+ *
+ * Deliberately thinner than index.html: base pay, hours, season length. No
+ * employer cost, no burden, no after-tax estimate, no Scenario B. A TM opens
+ * this in front of an installer, so every number on screen is the installer's
+ * money.
+ *
+ * DAYS is fixed at 6 and hours are capped at 12/day by company rule. That is
+ * not a simplification for its own sake - at <= 12 hrs/day over >= 5 days the
+ * federal, California and Colorado rules produce identical pay, so locking the
+ * shape is what lets this page skip a state picker and still be right in
+ * SoCal and Colorado. Break either condition and they diverge; see checkRule().
+ */
+const DAYS = 6;
+const STATE = 'FED';
+const MAX_PER_DAY = 12;
+const WEEKS_PER_MONTH = 52 / 12;
+
+const $ = id => document.getElementById(id);
+const money  = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money0 = n => Math.round(n).toLocaleString('en-US');
+const hrs    = n => Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+const r2     = n => Math.round((n + Number.EPSILON) * 100) / 100;
+
+function solveBlended() {
+  const hours = +$('hours').value || 0;
+  const t = +$('blend').value || 0;
+  if (!(t > 0 && hours > 0)) return 0;
+  return rateForBlended(t, hours, DAYS, STATE);
+}
+function paintSolver() {
+  const r = solveBlended();
+  $('blendOut').innerHTML = r > 0 ? '$' + money(r) : '&mdash;';
+  $('blendUse').disabled = !(r > 0);
+}
+
+/* Weeks is the source of truth - the season total multiplies whole weeks, and
+   4.33 of them is not a thing you can pay someone. Months is a convenience
+   readout that rounds back to weeks on entry. */
+function syncFromWeeks() { $('mo').value = (( +$('wk').value || 0) / WEEKS_PER_MONTH).toFixed(1); }
+function syncFromMonths() { $('wk').value = Math.max(1, Math.round((+$('mo').value || 0) * WEEKS_PER_MONTH)); }
+
+function render() {
+  const rate  = +$('rate').value || 0;
+  const hours = +$('hours').value || 0;
+  const wkE   = Math.max(1, Math.floor(+$('wk').value || 8));
+  const out   = [];
+
+  if (!(rate > 0 && hours > 0)) {
+    $('out').innerHTML = '<p class="bignum-sub" style="margin:0">Enter base pay and hours.</p>';
+    paintSolver();
+    return;
+  }
+
+  const w      = computeWeek(rate, evenSplit(hours, DAYS), STATE);
+  const flat40 = computeWeek(rate, evenSplit(40, 5), STATE);
+  const seg    = t => w.total > 0 ? (t / w.total * 100) : 0;
+
+  out.push(`<div>
+    <p class="bignum-label">You earn, per week</p>
+    <p class="bignum"><span class="cur">$</span>${money(w.cost)}</p>
+    <p class="bignum-sub">${hrs(hours)} hours over ${DAYS} days &middot; ${hrs(r2(hours / DAYS))} a day</p>
+  </div>`);
+
+  out.push(`<div>
+    <div class="bar">
+      ${w.reg ? `<div class="s-reg" style="width:${seg(w.reg)}%"></div>` : ''}
+      ${w.ot  ? `<div class="s-ot"  style="width:${seg(w.ot)}%"></div>`  : ''}
+      ${w.dt  ? `<div class="s-dt"  style="width:${seg(w.dt)}%"></div>`  : ''}
+    </div>
+    <div class="legend">
+      <span class="k-reg"><i></i>Regular ${hrs(w.reg)} hrs @ $${money(rate)}</span>
+      ${w.ot ? `<span class="k-ot"><i></i>OT ${hrs(w.ot)} hrs @ $${money(rate * 1.5)}</span>` : ''}
+      ${w.dt ? `<span class="k-dt"><i></i>Double ${hrs(w.dt)} hrs @ $${money(rate * 2)}</span>` : ''}
+    </div>
+  </div>`);
+
+  out.push(`<p class="reframe">$${money(rate)} base + overtime = <b>$${money(w.blended)}/hr</b></p>`);
+
+  out.push(`<div class="tw"><table class="mini">
+    <tr class="emph"><th>Pay per week</th><td class="n">$${money(w.cost)}</td></tr>
+    <tr class="emph"><th>Pay every 2 weeks</th><td class="n">$${money(w.cost * 2)}</td></tr>
+    <tr><th>Pay per day <span class="hint">(${DAYS} days)</span></th><td class="n">$${money(w.cost / DAYS)}</td></tr>
+    <tr class="pop"><th>Average pay per hour <span class="hint">(base + overtime)</span></th><td class="n">$${money(w.blended)}</td></tr>
+    <tr class="less"><th>Only 40 hours a week</th><td class="n">$${money(flat40.cost)}</td></tr>
+  </table></div>`);
+
+  /* Same named weeks as the employee card, and the same folding: a 72-hour week
+     IS the busy week, so it prints once under both names rather than twice. */
+  const named = [
+    { label: 'Training x2 weeks', h: 40,    wk: flat40 },
+    { label: 'Your week',         h: hours, wk: w, me: true },
+    { label: 'Strike',            h: 65 },
+    { label: 'Busy week',         h: 72, note: 'not promised &mdash; as needed' },
+  ];
+  named.forEach(r => { if (!r.wk) r.wk = computeWeek(rate, evenSplit(r.h, DAYS), STATE); });
+  const rows = [];
+  named.forEach(r => {
+    const twin = rows.find(x => Math.abs(x.h - r.h) < 0.01);
+    if (!twin) { rows.push(r); return; }
+    const keep = twin.me ? twin : r, drop = twin.me ? r : twin;
+    keep.label = keep.label + ' · ' + drop.label;
+    if (drop.note && !keep.note) keep.note = drop.note;
+    if (keep !== twin) rows[rows.indexOf(twin)] = keep;
+  });
+  rows.sort((a, b) => a.h - b.h);
+
+  out.push(`<div>
+    <p class="bignum-label" style="margin-bottom:0.2rem">Other weeks</p>
+    <div class="tw"><table class="mini">
+      ${rows.map(r => `<tr class="${r.me ? 'emph' : (r.h < hours - 0.01 ? 'less' : '')}"><th>${r.label} <span class="hint">(${hrs(r.h)} hours)</span>${r.note ? `<br><span class="hint">${r.note}</span>` : ''}</th><td class="n">$${money(r.wk.cost)}</td></tr>`).join('')}
+    </table></div>
+  </div>`);
+
+  /* Two weeks of the season are training at 40, not all of them. */
+  const trainWk = Math.min(2, wkE);
+  const restWk  = wkE - trainWk;
+  const busyWk  = rows.find(r => /Busy week/.test(r.label));
+  const topCost = Math.max(busyWk ? busyWk.wk.cost : 0, w.cost);
+  const lo = trainWk * flat40.cost + restWk * w.cost;
+  const hi = trainWk * flat40.cost + restWk * topCost;
+  const months = (wkE / WEEKS_PER_MONTH).toFixed(1);
+  out.push(`<div>
+    <p class="bignum-label">Total for ${hrs(wkE)} weeks <span class="hint">(about ${months} months)</span></p>
+    <p class="bignum season"><span class="cur">$</span>${money0(lo)}${Math.abs(hi - lo) < 0.5 ? '' :
+      `<span class="joiner">to</span><span class="cur">$</span>${money0(hi)}`}</p>
+    <p class="bignum-sub">Includes ${trainWk === 1 ? 'one training week' : trainWk + ' training weeks'} at 40 hours.</p>
+  </div>`);
+
+  out.push(checkRule(hours));
+
+  out.push(`<div class="warn"><b>Hours not guaranteed.</b>
+    Hours change by territory, by week and by weather. Numbers above show what
+    ${hrs(hours)} hours a week pays.</div>`);
+
+  $('out').innerHTML = out.join('');
+  paintSolver();
+}
+
+/* The 12-hour cap is the whole reason this page can skip a state picker. Past
+   it, California owes double time and every figure above reads LOW there -
+   so say so loudly rather than quietly printing a federal number. */
+function checkRule(hours) {
+  const perDay = hours / DAYS;
+  if (perDay <= MAX_PER_DAY + 0.001) return '';
+  const ca = computeWeek(+$('rate').value || 0, evenSplit(hours, DAYS), 'CA').cost;
+  const fed = computeWeek(+$('rate').value || 0, evenSplit(hours, DAYS), 'FED').cost;
+  return `<div class="warn"><b>Over the 12-hour rule.</b>
+    ${hrs(r2(perDay))} hours a day breaks the company cap. In California that owes
+    double time — the same week pays <b>$${money(ca)}</b> there, not $${money(fed)}.
+    Figures above are the Federal number.</div>`;
+}
+
+['rate', 'hours', 'blend'].forEach(id => $(id).addEventListener('input', render));
+$('wk').addEventListener('input', () => { syncFromWeeks(); render(); });
+$('mo').addEventListener('input', () => { syncFromMonths(); render(); });
+$('blendUse').addEventListener('click', () => {
+  const r = solveBlended();
+  if (r > 0) { $('rate').value = r.toFixed(2); render(); }
+});
+syncFromWeeks();
+render();
+</script>
+</body>
+</html>

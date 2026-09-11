@@ -5,582 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Overtime &amp; Wage Calculator — Brite Nites</title>
 
-<style>
-  /* ============================================================
-   * Palette lifted from @brite-nites/design-system v0.11 tokens.css.
-   *
-   * This page is standalone HTML and cannot import the package, so the
-   * values are copied rather than referenced. Names mirror the DS's
-   * semantic layer so the mapping stays legible:
-   *   --ground  = DS --background   (--sidebar-grey)
-   *   --surface = DS --card         (--white)
-   *   --sunken  = DS --muted        (--neutral-light)
-   *   --ink     = DS --foreground   (--neutral-dark)
-   *   --ink-mid = DS --muted-foreground (--neutral-medium)
-   *   --rule    = DS --border/--input   (--neutral)
-   *
-   * NO BRAND COLOR. Consuming apps ink the DS with their own primary; this is
-   * an internal operations tool, so it stays on the DS neutrals plus the
-   * semantic status family. Interactive states use the DS status-blue rather
-   * than any brand hue.
-   *
-   * CONTRAST DISCIPLINE, copied from the DS's DRO-724 lesson: the DS
-   * deliberately darkened --neutral-medium from #767676 to #646464 to clear
-   * 4.5:1 as body text. So there is NO pale grey text on this page — #646464
-   * is the lightest value any readable text uses. Status pairs below are the
-   * DS's own tag recipes, whose ratios it documents.
-   *
-   * Fonts: the DS uses Geist Sans / Geist Mono, which cannot be embedded in a
-   * self-contained file without the woff2. System stacks stand in.
-   * ============================================================ */
-  :root {
-    --ground:    #efefef;   /* DS --sidebar-grey */
-    --surface:   #fbfbfa;   /* DS --white */
-    --sunken:    #f4f4f4;   /* DS --neutral-light */
-    --ink:       #464646;   /* DS --neutral-dark */
-    --ink-mid:   #646464;   /* DS --neutral-medium — 5.72:1 on --surface */
-    --ink-mute:  #646464;   /* same value on purpose: no sub-4.5:1 text */
-    --ink-faint: #646464;
-    --rule:      #dadada;   /* DS --neutral */
-    --rule-firm: #8a8a8a;  /* control borders. DIVERGES from DS --input (#dadada,
-                              ~1.2:1) and from my own #c4c4c4 (1.35:1) — both fail the
-                              3:1 non-text minimum. #8a8a8a = 3.33:1 on card, 3.00:1 on
-                              canvas. Same kind of deliberate divergence the DS made
-                              when it darkened --neutral-medium for WCAG. Decorative
-                              separators stay on --rule. */
-    --accent:    #1a4ad6;   /* DS --status-blue-tag-text — 5.52:1, safe as text */
-    --accent-fill: #205aff; /* DS --status-blue-dark — fills only */
-    --accent-bg: #dae4ff;   /* DS --status-blue-light */
-    --reg:       #8f8f8f;   /* bar fill only, never text */
-    --reg-bg:    #f4f4f4;
-    --reg-ink:   #464646;
-    --ot:        #a87a00;   /* DS --status-yellow-dark darkened. #bf8b00 measured 2.94:1
-                              on --surface, just under the 3:1 non-text floor; this is
-                              3.72:1 in the same hue. Dark mode needs no change (7.11:1). */
-    --ot-bg:     #fff9c4;   /* DS --status-yellow-light */
-    --ot-ink:    #7d5b00;   /* DS tag text — 5.82:1 on --ot-bg */
-    --dt:        #e61619;   /* DS --status-red-dark — bar fill */
-    --dt-bg:     #ffd8d8;   /* DS --status-red-light */
-    --dt-ink:    #b00b0e;   /* DS tag text — 5.54:1 on --dt-bg */
-    --good:      #1a7a1a;   /* DS --status-green-tag-text — 4.67:1 */
-    --good-bg:   #d6f0d6;   /* DS --status-green-light */
-    --good-ink:  #14631a;   /* 6.12:1 on --good-bg. #1a7a1a measures 4.51:1 there,
-                               which clears AA by 0.01 — too thin a margin to ship. */
-
-    --r-sm: 6px;   /* DS --radius-sm */
-    --r-md: 8px;   /* DS --radius-md */
-    --r-lg: 10px;  /* DS --radius-lg */
-
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  }
-
-  /* Dark values are the DS's own .dark block, including its documented
-   * substitutions: --ring #1a64ff and --destructive #ff7b7d. */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground:    #0b0b0b;
-      --surface:   #1f1f1f;
-      --sunken:    #2a2a2a;
-      --ink:       #dadada;
-      --ink-mid:   #9f9f9f;
-      --ink-mute:  #9f9f9f;
-      --ink-faint: #9f9f9f;
-      --rule:      #464646;
-      --rule-firm: #6e6e6e;  /* 3.23:1 on dark card; #5a5a5a was 2.39:1 */
-      --accent:    #7fa6ff;
-      --accent-fill: #1a64ff;
-      --accent-bg: #16233d;
-      --reg:       #7a7a7a;
-      --reg-bg:    #2a2a2a;
-      --reg-ink:   #dadada;
-      --ot:        #d5a155;
-      --ot-bg:     #2a2318;
-      --ot-ink:    #e8c07a;
-      --dt:        #ff7b7d;
-      --dt-bg:     #2f1a1a;
-      --dt-ink:    #ffb3b4;
-      --good:      #8cba5e;
-      --good-bg:   #18240f;
-      --good-ink:  #a5cf76;   /* 9.08:1 on --good-bg */
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground:    #0b0b0b;
-    --surface:   #1f1f1f;
-    --sunken:    #2a2a2a;
-    --ink:       #dadada;
-    --ink-mid:   #9f9f9f;
-    --ink-mute:  #9f9f9f;
-    --ink-faint: #9f9f9f;
-    --rule:      #464646;
-    --rule-firm: #6e6e6e;  /* 3.23:1 on dark card; #5a5a5a was 2.39:1 */
-    --accent:    #7fa6ff;
-    --accent-fill: #1a64ff;
-    --accent-bg: #16233d;
-    --reg:       #7a7a7a;
-    --reg-bg:    #2a2a2a;
-    --reg-ink:   #dadada;
-    --ot:        #d5a155;
-    --ot-bg:     #2a2318;
-    --ot-ink:    #e8c07a;
-    --dt:        #ff7b7d;
-    --dt-bg:     #2f1a1a;
-    --dt-ink:    #ffb3b4;
-    --good:      #8cba5e;
-    --good-bg:   #18240f;
-    --good-ink:  #a5cf76;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    background: var(--ground);
-    color: var(--ink);
-    font-family: var(--sans);
-    font-size: 15px;
-    line-height: 1.5;
-    margin: 0;
-    -webkit-text-size-adjust: 100%;
-  }
-
-  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 1.2rem 5rem; }
-
-  /* ---------- header ---------- */
-  header.top {
-    padding: 2.4rem 0 1.3rem;
-    border-bottom: 2px solid var(--ink);
-    margin-bottom: 1.8rem;
-  }
-  .eyebrow {
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--accent); margin: 0 0 0.6rem;
-  }
-  h1 {
-    font-size: 1.85rem; line-height: 1.15; font-weight: 650;
-    letter-spacing: -0.018em; margin: 0 0 0.55rem;
-  }
-  .sub { color: var(--ink-mute); font-size: 0.92rem; margin: 0; max-width: 62ch; }
-  .stamp {
-    display: inline-block; margin-top: 0.9rem; font-family: var(--mono);
-    font-size: 0.72rem; color: var(--ink-mute);
-    background: var(--sunken); border: 1px solid var(--rule);
-    padding: 0.22em 0.55em; border-radius: var(--r-sm);
-  }
-
-  /* ---------- panels ---------- */
-  .panel {
-    background: var(--surface); border: 1px solid var(--rule);
-    border-radius: var(--r-md); padding: 1.15rem 1.2rem; margin-bottom: 1.1rem;
-  }
-  .panel > h2 {
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--ink-mute);
-    margin: 0 0 0.95rem; padding-bottom: 0.55rem;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  /* ---------- controls ---------- */
-  .row { display: flex; flex-wrap: wrap; gap: 1.35rem 1.4rem; align-items: flex-end; }
-  .field { display: flex; flex-direction: column; gap: 0.42rem; }
-  .field label {
-    font-size: 0.72rem; font-weight: 650; letter-spacing: 0.045em;
-    text-transform: uppercase; color: var(--ink-mute);
-  }
-  .field .hint { font-size: 0.72rem; color: var(--ink-faint); font-weight: 400; text-transform: none; letter-spacing: 0; }
-
-  input[type="number"], input[type="date"], select {
-    font-family: var(--mono); font-size: 0.95rem;
-    background: var(--surface); color: var(--ink);
-    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
-    padding: 0.42rem 0.5rem; width: 100%;
-  }
-  input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
-  select { font-family: var(--sans); }
-  /* Element-prefixed on purpose: input[type="..."] above outranks a bare class,
-     so plain .w-date lost to width:100% and every field stretched full width. */
-  input.w-rate   { width: 7rem; }
-  input.w-hours  { width: 7rem; }
-  input.w-days   { width: 5.5rem; }
-  input.w-small  { width: 5.5rem; }
-  input.w-date   { width: 9.5rem; }
-  select.w-state { width: 17rem; }
-
-  input:focus-visible, select:focus-visible, button:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px;
-  }
-
-  .seg { display: inline-flex; border: 1px solid var(--rule-firm); border-radius: var(--r-sm); overflow: hidden; }
-  .seg button {
-    font-family: var(--sans); font-size: 0.82rem; font-weight: 550;
-    background: var(--surface); color: var(--ink-mid);
-    border: none; padding: 0.44rem 0.85rem; cursor: pointer;
-  }
-  .seg button + button { border-left: 1px solid var(--rule-firm); }
-  .seg button[aria-pressed="true"] { background: var(--accent-fill); color: #fff; }
-  .seg button[disabled] { opacity: 0.4; cursor: not-allowed; }
-
-  .fixed-note {
-    font-family: var(--mono); font-size: 0.8rem; color: var(--ink-mid);
-    background: var(--sunken); border: 1px solid var(--rule);
-    padding: 0.42rem 0.6rem; border-radius: var(--r-sm); white-space: nowrap;
-  }
-
-  /* per-day grid */
-  .perday { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 0.5rem; margin-top: 0.55rem; }
-  .perday .d { display: flex; flex-direction: column; gap: 0.25rem; }
-  .perday .d span {
-    font-family: var(--mono); font-size: 0.68rem; color: var(--ink-mute);
-    text-align: center; letter-spacing: 0.03em;
-  }
-  .perday input { padding: 0.36rem 0.3rem; text-align: center; font-size: 0.88rem; }
-  .hidden { display: none !important; }
-
-  /* ---------- scenario cards ---------- */
-  .scenarios { display: grid; grid-template-columns: 1fr; gap: 1.1rem; }
-  @media (min-width: 860px) { .scenarios { grid-template-columns: 1fr 1fr; } }
-  /* Three cards in a two-column grid wrap 2 + 1, which keeps every card the
-     same width as Scenario A rather than squeezing three into one row. */
-
-  /* .card sets `display`, which outranks the UA default for [hidden]. */
-  [hidden] { display: none !important; }
-
-  /* ---------- employee card: rate reframe ---------- */
-  .reframe {
-    background: var(--ot-bg); border: 1px solid var(--ot);
-    border-radius: var(--r-md); padding: 0.8rem 1rem; margin: 0;
-    /* Sized to hold one line at card width. The sentence was shortened for the
-       same reason — it wrapped mid-clause at 1rem and read badly. */
-    font-size: 0.95rem; line-height: 1.4; color: var(--ot-ink);
-  }
-  .reframe b { color: var(--ot-ink); }
-
-  /* ---------- employee card: readability ----------
-     Audience is field technicians, some reading English as a second language
-     and some who read poorly. Three things follow from that, and they override
-     the house style used on Scenario A and B:
-       1. No ALL CAPS. Uppercase strips word shape, which is what a struggling
-          reader leans on most. Sentence case everywhere on this card.
-       2. Bigger type. The mini table is 0.85rem elsewhere; here it is 0.98rem.
-       3. Colour carries meaning on its own, for anyone who skips the words:
-          green is more money, muted grey is the lesser option. Deliberately
-          NOT red — red already means double-time in the bar legend above,
-          where it is the BEST money. Reusing it for "worse" would contradict
-          the same card. */
-  /* No <h3> on this card — the toggle is the label — so the head has a single
-     child and space-between would park it on the left. */
-  #cardE .card-head { justify-content: flex-end; }
-
-  /* Vertical budget. Everything on this card has to land in one screenshot and
-     NOTHING may be dropped to get there, so the whole card runs on a tighter
-     rhythm than A and B rather than losing a row. Measured, not guessed:
-     542x919 -> 542x764 at desktop width (ratio 1:1.41, which fills a phone
-     screen well when the image is sent), and 358x988 -> 358x825 at iPhone
-     content width. Table type is NOT taken below 0.92rem — legibility for a
-     second-language reader is this card's whole purpose and outranks height.
-     Everything given up here is whitespace and chrome.
-
-     These rules also carry the readability overrides for the card (sentence
-     case, larger-than-house type). Both concerns live in ONE block on purpose:
-     they were split before, the density half sat earlier in the sheet, and the
-     readability half silently won every conflict on specificity ties. */
-  #cardE { padding: 0.8rem 0.9rem; gap: 0.6rem; }
-  #cardE #eBody, #cardE #outE { gap: 0.6rem; }
-
-  #cardE table.mini { font-size: 0.92rem; }
-  #cardE table.mini th {
-    font-size: 0.9rem; font-weight: 600; letter-spacing: 0;
-    text-transform: none; color: var(--ink);
-  }
-  #cardE table.mini th .hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
-  #cardE table.mini td.n { font-size: 0.94rem; }
-  #cardE table.mini th, #cardE table.mini td { padding: 0.22rem 0.1rem; line-height: 1.25; }
-
-  #cardE .bignum { font-size: 1.95rem; line-height: 1.05; }
-  #cardE .bignum.season { font-size: 1.5rem; }
-  #cardE .bignum-label {
-    font-size: 0.88rem; font-weight: 650; letter-spacing: 0;
-    text-transform: none; color: var(--ink); margin-bottom: 0.1rem;
-  }
-  #cardE .bignum-sub { margin-top: 0.25rem; font-size: 0.78rem; }
-
-  #cardE .bar { height: 0.95rem; }
-  #cardE .legend { font-size: 0.7rem; margin-top: 0.35rem; gap: 0.25rem 0.5rem; }
-  #cardE .legend span { padding: 0.12em 0.45em; }
-  #cardE .reframe { padding: 0.45rem 0.7rem; font-size: 0.88rem; }
-
-  /* Two weights of the same meaning, so green always reads as "more money":
-     a filled row for the headline figure, green text alone for a delta. */
-  #cardE tr.pop th, #cardE tr.pop td {
-    background: var(--good-bg); color: var(--good-ink);
-    font-weight: 700; border-bottom-color: var(--good-bg);
-  }
-  #cardE tr.pop th { border-radius: var(--r-sm) 0 0 var(--r-sm); padding-left: 0.55rem; }
-  #cardE tr.pop td { border-radius: 0 var(--r-sm) var(--r-sm) 0; padding-right: 0.55rem; }
-  #cardE tr.pop th .hint { color: var(--good-ink); font-weight: 500; }
-  #cardE tr.more th, #cardE tr.more td { color: var(--good); font-weight: 700; }
-  /* muted = the option that pays less. */
-  #cardE tr.less th, #cardE tr.less td { color: var(--ink-mute); }
-  /* Yellow means one thing on this card: the rate reframe. The closing caveat
-     gets a neutral treatment so it does not compete with it. */
-  /* One size down from the card's body copy, italic, neutral fill so the yellow
-     reframe above stays the only yellow. Single rule — this had a duplicate in
-     the density block that lost on source order. */
-  #cardE .warn {
-    border-left-color: var(--rule-firm); background: var(--sunken);
-    padding: 0.45rem 0.7rem; font-size: 0.86rem; font-style: italic;
-  }
-  /* The bold lead-in stays upright so it still reads as a heading. */
-  #cardE .warn b { font-style: normal; }
-
-  /* Season range. The joiner needs real air on both sides; at the default
-     .cur spacing the "to" collided with both figures. */
-  .bignum.season { font-size: 2rem; }
-  .bignum .joiner {
-    font-size: 1.05rem; font-weight: 500; color: var(--ink-mute);
-    margin: 0 0.55em; vertical-align: 0.18em;
-  }
-
-  .card {
-    background: var(--surface); border: 1px solid var(--rule);
-    border-radius: var(--r-md); padding: 1.35rem 1.35rem 1.5rem;
-    display: flex; flex-direction: column; gap: 1.7rem;
-  }
-  /* results stack — each block needs real air between it and the next */
-  #outA, #outB, #outE { display: flex; flex-direction: column; gap: 1.7rem; }
-  /* Scenario B nests everything inside #bBody, so it is one card child and the
-     card's gap never reaches its contents. Give it the same gap itself. */
-  #bBody, #eBody { display: flex; flex-direction: column; gap: 1.7rem; }
-  .card.b-off { opacity: 0.55; }
-  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-  .card-head h3 {
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--ink-mute); margin: 0;
-  }
-  .toggle-b {
-    font-family: var(--sans); font-size: 0.75rem; font-weight: 550;
-    background: none; border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
-    color: var(--ink-mute); padding: 0.2rem 0.5rem; cursor: pointer;
-  }
-
-  /* ---------- big result ---------- */
-  .bignum {
-    font-family: var(--mono); font-variant-numeric: tabular-nums;
-    font-size: 2.5rem; line-height: 1.05; font-weight: 600;
-    letter-spacing: -0.03em; margin: 0;
-  }
-  .bignum .cur { font-size: 1.4rem; vertical-align: 0.42em; color: var(--ink-mute); margin-right: 0.05em; }
-  .bignum-label { font-size: 0.72rem; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 0.7rem; }
-  .bignum-sub { font-family: var(--mono); font-size: 0.82rem; color: var(--ink-mute); margin: 0.85rem 0 0; font-variant-numeric: tabular-nums; }
-
-  /* ---------- hour bar ---------- */
-  .bar { display: flex; height: 1.5rem; border-radius: var(--r-sm); overflow: hidden; background: var(--sunken); border: 1px solid var(--rule); }
-  .bar > div { min-width: 0; }
-  .bar .s-reg { background: var(--reg); }
-  .bar .s-ot  { background: var(--ot); }
-  .bar .s-dt  { background: var(--dt); }
-  .legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: 0.7rem; }
-  .legend span {
-    font-family: var(--mono); font-size: 0.74rem; font-variant-numeric: tabular-nums;
-    padding: 0.2em 0.55em; border-radius: var(--radius-full, 9999px);
-    display: inline-flex; align-items: center; white-space: nowrap;
-  }
-  .legend .k-reg { background: var(--reg-bg); color: var(--reg-ink); }
-  .legend .k-ot  { background: var(--ot-bg);  color: var(--ot-ink); }
-  .legend .k-dt  { background: var(--dt-bg);  color: var(--dt-ink); }
-  .legend i { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; }
-  .legend .k-reg i { background: var(--reg); }
-  .legend .k-ot  i { background: var(--ot); }
-  .legend .k-dt  i { background: var(--dt); }
-
-  /* ---------- mini table ---------- */
-  table.mini { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
-  table.mini th, table.mini td { padding: 0.55rem 0.1rem; border-bottom: 1px solid var(--rule); text-align: left; }
-  table.mini th { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); }
-  table.mini td.n, table.mini th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  table.mini tr:last-child td { border-bottom: none; }
-  table.mini tr.emph td { font-weight: 650; color: var(--ink); }
-
-  .tw { overflow-x: auto; }
-
-  /* ---------- verdict strip ---------- */
-  .verdict {
-    background: var(--accent-bg); border: 1px solid var(--accent);
-    border-radius: var(--r-md); padding: 1rem 1.2rem; margin-bottom: 1.1rem;
-  }
-  .verdict p { margin: 0 0 0.4rem; }
-  .verdict p:last-child { margin-bottom: 0; }
-  .verdict .lead { font-size: 1.05rem; font-weight: 600; color: var(--ink); }
-  .verdict .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-  .verdict .small { font-size: 0.85rem; color: var(--ink-mid); }
-
-  /* ---------- warnings ---------- */
-  .warn {
-    border-left: 3px solid var(--ot); background: var(--ot-bg);
-    padding: 0.75rem 0.9rem; border-radius: 0 var(--r-sm) var(--r-sm) 0;
-    font-size: 0.86rem; color: var(--ink-mid); margin: 0.9rem 0 0;
-  }
-  .warn b { color: var(--ink); }
-
-  /* ---------- limitations ---------- */
-  details.limits { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 0.9rem 1.2rem; }
-  details.limits summary {
-    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em;
-    text-transform: uppercase; color: var(--dt); cursor: pointer;
-  }
-  details.limits ol { margin: 1rem 0 0; padding-left: 1.4rem; font-size: 0.88rem; color: var(--ink-mid); max-width: 78ch; }
-  details.limits li { margin-bottom: 0.7rem; }
-  details.limits b { color: var(--ink); }
-
-  footer.foot {
-    margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid var(--rule);
-    font-size: 0.8rem; color: var(--ink-faint);
-  }
-  footer.foot code { font-family: var(--mono); font-size: 0.94em; }
-
-  /* ---------- info buttons ----------
-     Click, not hover: hover tooltips are unreachable on touch and invisible to
-     a keyboard. Panels live in a full-width strip below their row so opening
-     one cannot widen a field and reflow the layout. */
-  .info {
-    font-family: var(--sans); font-size: 0.66rem; font-weight: 700;
-    width: 1.05rem; height: 1.05rem; line-height: 1; padding: 0;
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 50%; border: 1px solid var(--rule-firm);
-    background: var(--sunken); color: var(--ink-mid);
-    cursor: pointer; margin-left: 0.4rem; vertical-align: middle;
-    text-transform: none; letter-spacing: 0;
-  }
-  .info:hover { color: var(--accent); border-color: var(--accent); }
-  .info[aria-expanded="true"] {
-    background: var(--accent-fill); color: #fff; border-color: var(--accent-fill);
-  }
-  .infobox {
-    font-family: var(--sans); font-size: 0.83rem; font-weight: 400;
-    text-transform: none; letter-spacing: 0; line-height: 1.5;
-    color: var(--ink-mid); background: var(--sunken);
-    border-left: 3px solid var(--accent-fill);
-    padding: 0.7rem 0.85rem; border-radius: 0 var(--r-sm) var(--r-sm) 0;
-    max-width: 62ch; margin-top: 0.9rem;
-  }
-  .infobox b { color: var(--ink); }
-  .infobox[hidden] { display: none; }
-  .unlock-note {
-    font-size: 0.72rem; color: var(--ink-mid); margin: 0.5rem 0 0;
-  }
-
-  /* ---------- presets ---------- */
-  .presets { display: flex; flex-wrap: wrap; gap: 0.45rem; }
-  .presets button, .chipbtn {
-    font-family: var(--sans); font-size: 0.78rem; font-weight: 550;
-    background: var(--sunken); color: var(--ink-mid);
-    border: 1px solid var(--rule-firm); border-radius: 999px;
-    padding: 0.3rem 0.72rem; cursor: pointer; white-space: nowrap;
-  }
-  .presets button:hover, .chipbtn:hover { color: var(--accent); border-color: var(--accent); }
-
-  /* ---------- apply ---------- */
-  .applybtn {
-    font-family: var(--sans); font-size: 0.86rem; font-weight: 600;
-    background: var(--sunken); color: var(--ink-mute);
-    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
-    padding: 0.44rem 1.1rem; cursor: default;
-  }
-  .applybtn[data-dirty="1"] {
-    background: var(--accent-fill); color: #fff; border-color: var(--accent-fill); cursor: pointer;
-  }
-  .apply-hint { font-size: 0.76rem; color: var(--ink-faint); margin: 0.55rem 0 0; }
-  .apply-hint[data-dirty="1"] { color: var(--accent); font-weight: 600; }
-
-  .weeks-out {
-    font-family: var(--mono); font-size: 0.86rem; color: var(--ink-mid);
-    background: var(--sunken); border: 1px solid var(--rule);
-    padding: 0.42rem 0.6rem; border-radius: var(--r-sm); white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-  .weeks-out.none { color: var(--ink-faint); }
-
-  .subhead {
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
-    text-transform: uppercase; color: var(--ink-faint);
-    margin: 0 0 0.75rem; padding-top: 0.2rem;
-  }
-  .divide { border: none; border-top: 1px solid var(--rule); margin: 1.5rem 0 1.2rem; }
-
-  .copybtn {
-    font-family: var(--sans); font-size: 0.78rem; font-weight: 550;
-    background: var(--surface); color: var(--ink-mid);
-    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
-    padding: 0.35rem 0.7rem; cursor: pointer;
-  }
-
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-
-  /* ---------- print / PDF ---------- */
-  .print-only { display: none; }
-
-  @media print {
-    /* Force the light palette. A dark-mode screen prints as a black slab. */
-    :root, :root[data-theme="dark"] {
-      --ground: #ffffff; --surface: #ffffff; --sunken: #f4f4f4;
-      --ink: #1a1a1a; --ink-mid: #4a4a4a; --ink-mute: #4a4a4a; --ink-faint: #4a4a4a;
-      --rule: #c4c4c4; --rule-firm: #999999;
-      --accent: #1a4ad6; --accent-fill: #205aff; --accent-bg: #eef2fd;
-      --reg: #8f8f8f; --reg-bg: #f4f4f4; --reg-ink: #1a1a1a;
-      --ot: #bf8b00; --ot-bg: #fff9c4; --ot-ink: #6b4e00;
-      --dt: #e61619; --dt-bg: #ffd8d8; --dt-ink: #9a0a0c;
-    }
-    @page { margin: 0.55in; }
-    body { background: #fff; font-size: 10.5pt; }
-    .wrap { max-width: none; padding: 0; }
-
-    /* Controls you can't press on paper */
-    /* .warn deliberately NOT hidden: it carries the "hours split evenly —
-       understates California cost" caveat, and a printed sheet that drops it
-       states a number as firmer than it is. */
-    .presets, #apply, .apply-hint, #share, #printBtn, .toggle-b, .info, .infobox,
-    .unlock-note, .seg button[aria-pressed="false"], .seg button[disabled] { display: none !important; }
-    /* An off scenario B otherwise prints as a faded stub carrying the words
-       "Turn this on to compare two rates…" — reads as a broken document. */
-    .card.b-off { display: none !important; }
-    .scenarios:has(.card.b-off) { grid-template-columns: 1fr; }
-    .seg { border: none; }
-    .seg button[aria-pressed="true"] {
-      background: none !important; color: var(--ink) !important;
-      padding: 0; font-weight: 700;
-    }
-    input, select {
-      border: none !important; background: none !important;
-      padding: 0 !important; color: var(--ink) !important;
-      -webkit-appearance: none; appearance: none;
-      font-weight: 600; text-align: left !important; width: auto !important;
-    }
-    input::-webkit-calendar-picker-indicator { display: none; }
-
-    header.top { padding-top: 0; }
-    .stamp { border: none; background: none; padding: 0; }
-    .print-only { display: block; }
-
-    .panel, .card, details.limits { break-inside: avoid; box-shadow: none; }
-    .scenarios { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
-    .card { gap: 1rem; padding: 0.8rem; }
-    #outA, #outB, #outE { gap: 1rem; }
-    .bignum { font-size: 1.7rem; }
-    .verdict { background: var(--accent-bg); break-inside: avoid; }
-
-    /* The limitations must print. Two mechanisms on purpose, because neither is
-       universal: a beforeprint handler opens the <details> (Safari's support is
-       unreliable), and this CSS forces the children visible (Safari is also the
-       weak engine for that override). Together they cover more than either. */
-    details.limits summary { list-style: none; }
-    details.limits > * { display: revert !important; }
-    details.limits > ol { display: block !important; }
-    details.limits ol { font-size: 9.5pt; }
-
-    footer.foot { break-inside: avoid; }
-    a[href^="http"]::after { content: ""; }
-  }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -591,6 +16,7 @@
     <h1>Overtime &amp; Wage Calculator</h1>
     <p class="sub">What a field worker costs, at any rate and any number of hours.</p>
     <span class="stamp">rates current as of January 2026 · verify before relying on this</span>
+    <p class="sub" style="margin-top:0.5rem"><a href="tm.html">Offer builder for TMs &rarr;</a> — base pay and hours only, for the conversation with an installer.</p>
     <p class="print-only" id="printStamp" style="font-family:var(--mono);font-size:0.72rem;color:var(--ink-mid);margin:0.5rem 0 0"></p>
   </header>
 
@@ -737,6 +163,13 @@
           <input type="number" id="peopleA" class="w-days" value="1" min="1" step="1">
         </div>
       </div>
+      <div class="solver" data-solve-for="A">
+        <span>Work backwards: blended</span>
+        <label for="blendA">$<input type="number" id="blendA" class="w-rate" step="0.25" min="0" placeholder="19.00"></label>
+        <span>/hr needs base pay of</span>
+        <span class="sv-out" id="blendOutA">&mdash;</span>
+        <button type="button" id="blendUseA" disabled>Use it</button>
+      </div>
       <div class="field" data-perday>
         <label>Per-day hours <span class="hint">optional — overrides the weekly total</span></label>
         <div class="perday" id="perdayA"></div>
@@ -779,6 +212,13 @@
             <label for="peopleB">× people</label>
             <input type="number" id="peopleB" class="w-days" value="1" min="1" step="1">
           </div>
+        </div>
+        <div class="solver" data-solve-for="B">
+          <span>Work backwards: blended</span>
+          <label for="blendB">$<input type="number" id="blendB" class="w-rate" step="0.25" min="0" placeholder="19.00"></label>
+          <span>/hr needs base pay of</span>
+          <span class="sv-out" id="blendOutB">&mdash;</span>
+          <button type="button" id="blendUseB" disabled>Use it</button>
         </div>
         <div class="field" data-perday>
           <label>Per-day hours <span class="hint">optional — overrides the weekly total</span></label>
@@ -1086,13 +526,25 @@ function renderEmployee(state, A, B, weeks) {
     { label: 'Busy week',         h: Math.min(72, cap16), note: 'not promised &mdash; as needed' },
   ];
   named.forEach(r => { if (!r.wk) r.wk = computeWeek(rate, evenSplit(r.h, days), state); });
-  /* Your week wins ties, so it sits above a strike week paying the same. */
-  named.sort((a, b) => (a.h - b.h) || (a.me ? -1 : b.me ? 1 : 0));
+  /* A 72-hour week IS the busy week, and a 65-hour week IS a strike week. Left
+     alone that printed the same money twice under two headings, which reads as
+     a bug. Fold them into one row carrying both names instead - the entered
+     week always survives, so "Your week" never disappears from under someone. */
+  const byHours = [];
+  named.forEach(r => {
+    const twin = byHours.find(x => Math.abs(x.h - r.h) < 0.01);
+    if (!twin) { byHours.push(r); return; }
+    const keep = twin.me ? twin : r, drop = twin.me ? r : twin;
+    keep.label = keep.label + ' \u00b7 ' + drop.label;
+    if (drop.note && !keep.note) keep.note = drop.note;
+    if (keep !== twin) byHours[byHours.indexOf(twin)] = keep;
+  });
+  const rows = byHours.sort((a, b) => a.h - b.h);
 
   out.push(`<div>
     <p class="bignum-label" style="margin-bottom:0.2rem">Other weeks</p>
     <div class="tw"><table class="mini">
-      ${named.map(r => `<tr class="${r.me ? 'emph' : (r.h < hours - 0.01 ? 'less' : '')}"><th>${r.label} <span class="hint">(${hrs(r.h)} hours)</span>${r.note ? `<br><span class="hint">${r.note}</span>` : ''}</th><td class="n">$${money(r.wk.cost)}</td></tr>`).join('')}
+      ${rows.map(r => `<tr class="${r.me ? 'emph' : (r.h < hours - 0.01 ? 'less' : '')}"><th>${r.label} <span class="hint">(${hrs(r.h)} hours)</span>${r.note ? `<br><span class="hint">${r.note}</span>` : ''}</th><td class="n">$${money(r.wk.cost)}</td></tr>`).join('')}
     </table></div>
   </div>`);
 
@@ -1101,13 +553,18 @@ function renderEmployee(state, A, B, weeks) {
      earn, so both ends carry the two training weeks and vary the rest. */
   const trainWk = Math.min(2, wkE);
   const restWk  = wkE - trainWk;
-  const busyWk  = named.find(r => r.label === 'Busy week');
+  const busyWk  = rows.find(r => /Busy week/.test(r.label));
   /* If somebody enters more than 72, their own week is the ceiling, not "busy". */
   const topCost = Math.max(busyWk ? busyWk.wk.cost : 0, w.cost);
+  const seasonLo = trainWk * flat40.cost + restWk * w.cost;
+  const seasonHi = trainWk * flat40.cost + restWk * topCost;
+  /* Enter 72 and your week IS the busy week, so both ends are the same number.
+     "$10,336 to $10,336" reads as a broken range; print the one figure. */
+  const flat = Math.abs(seasonHi - seasonLo) < 0.5;
   out.push(`<div>
     <p class="bignum-label">Total for ${hrs(wkE)} weeks</p>
-    <p class="bignum season"><span class="cur">$</span>${money0(trainWk * flat40.cost + restWk * w.cost)}<span
-      class="joiner">to</span><span class="cur">$</span>${money0(trainWk * flat40.cost + restWk * topCost)}</p>
+    <p class="bignum season"><span class="cur">$</span>${money0(seasonLo)}${flat ? '' : `<span
+      class="joiner">to</span><span class="cur">$</span>${money0(seasonHi)}`}</p>
   </div>`);
 
   if (A.sc.people > 1) {
@@ -1244,6 +701,30 @@ function renderCompare(A, B, state, burden) {
   $('compare').innerHTML = `<div class="verdict">${out.join('')}</div>`;
 }
 
+/* Work backwards: what base rate lands on a target blended (base + OT) rate?
+   Every rule here scales linearly with the base rate, so cost(r) === r*cost(1).
+   Price the week once at $1/hr and divide - exact, no searching, no nudging
+   the rate box a quarter at a time. Reads the per-day boxes wherever a daily
+   rule applies, so the answer describes the week actually on screen. */
+function solveBlended(s) {
+  const sc = readScenario(s);
+  const st = applied.state;
+  const arr = (sc.usingPerDay && RULES[st].dailyOtAfter !== null)
+    ? sc.perday.map(v => v || 0)
+    : evenSplit(sc.hours, sc.days);
+  const total = arr.reduce((a, b) => a + b, 0);
+  const unit  = computeWeek(1, arr, st).cost;
+  const t = +$('blend' + s).value || 0;
+  return (t > 0 && total > 0 && unit > 0) ? r2(t * total / unit) : 0;
+}
+function paintSolver(s) {
+  const out = $('blendOut' + s);
+  if (!out) return;
+  const r = solveBlended(s);
+  out.innerHTML = r > 0 ? '$' + money(r) : '&mdash;';
+  $('blendUse' + s).disabled = !(r > 0);
+}
+
 function render() {
   const state = applied.state;
   const burden = applied.burden;
@@ -1269,6 +750,7 @@ function render() {
   const B = bOn ? renderScenario('B', state, burden, weeks) : null;
   if (eOn) renderEmployee(state, A, B, weeks);
   renderCompare(A, B, state, burden);
+  paintSolver('A'); paintSolver('B');
   writeUrl();
 }
 
@@ -1347,6 +829,12 @@ document.querySelectorAll('#mode button').forEach(b =>
   b.addEventListener('click', () => { setMode(b.dataset.mode); render(); }));
 document.querySelectorAll('#period button').forEach(b =>
   b.addEventListener('click', () => { setPeriod(b.dataset.period); render(); }));
+['A', 'B'].forEach(s => $('blendUse' + s).addEventListener('click', () => {
+  const r = solveBlended(s);
+  /* Writes the rate field rather than only reporting it - the whole point is to
+     stop hand-tuning that box. Everything downstream recomputes from it. */
+  if (r > 0) { $('rate' + s).value = r.toFixed(2); render(); }
+}));
 $('toggleB').addEventListener('click', () => { setB(!bOn); render(); });
 $('toggleE').addEventListener('click', () => { setE(!eOn); render(); });
 /* The employee card has no inputs of its own — it mirrors Scenario A — so it
