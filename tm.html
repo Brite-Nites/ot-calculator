@@ -13,7 +13,7 @@
   <header class="top">
     <p class="eyebrow">Brite Nites · Field Operations</p>
     <h1>Offer Builder</h1>
-    <p class="sub">Everything underlined is editable. Change base pay, hours, the blended rate, or the season length right where it sits.</p>
+    <p class="sub">Every number in a box is editable. Change base pay, hours, the blended rate, or the season length right where it sits.</p>
     <span class="stamp">rates current as of January 2026 · verify before relying on this</span>
     <p class="sub" style="margin-top:0.5rem"><a href="index.html">&larr; Full calculator</a> — employer cost, burden, and state rules live there.</p>
   </header>
@@ -33,7 +33,10 @@
  * No settings panel. Every dial lives inside the sentence it changes: hours in
  * the hero line, base pay and the blended rate in the reframe band, weeks and
  * months in the season total. A TM opens this in front of an installer, so the
- * page has to read as a statement about their pay, not as a form.
+ * page reads as a statement about their pay rather than as a form to fill in -
+ * but the dials are still drawn as real boxed fields. Sentence-shaped and
+ * obviously typeable are not in tension; looking un-editable was a bug, not
+ * the point.
  *
  * The blended field is the whole trick. Type the rate you want to OFFER and it
  * back-solves base pay, because cost is linear in the base rate: cost(r) is
@@ -86,7 +89,7 @@ function render() {
   const flat40 = ok ? computeWeek(rate, evenSplit(40, 5), STATE) : null;
   const seg    = t => (w && w.total > 0) ? (t / w.total * 100) : 0;
 
-  out.push(`<div>
+  out.push(`<div class="hero">
     <p class="bignum-label">You earn, per week</p>
     <p class="bignum"><span class="cur">$</span>${ok ? money(w.cost) : '—'}</p>
     <p class="bignum-sub">${ie('fHours', hrs(hours), 'ie-hrs', 'hours per week')} hours over ${DAYS} days${

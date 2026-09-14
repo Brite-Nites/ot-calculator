@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Offer Builder — Brite Nites</title>
+<!-- Short, sayable path for the TM-facing page: /ot-calculator/offer/
+     The page itself stays at tm.html so the deployed files remain BYTE-
+     IDENTICAL to their source of record in Field-Ops/ot-calculator/. This repo
+     has drifted from that source once before and produced a $90 error on a
+     week's pay, so nothing here rewrites a file on the way out - the short
+     link is a separate file that never needs to change.
+     location.replace, not href, so the short URL does not sit in back-history
+     and trap someone in a redirect loop when they hit Back. -->
+<link rel="canonical" href="https://brite-nites.github.io/ot-calculator/tm.html">
+<meta http-equiv="refresh" content="0; url=../tm.html">
+<script>location.replace('../tm.html' + location.search + location.hash);</script>
+</head>
+<body style="font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:2rem">
+<p>Opening the <a href="../tm.html">Offer Builder</a>…</p>
+</body>
+</html>

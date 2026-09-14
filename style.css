@@ -68,60 +68,73 @@
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   }
 
-  /* Dark values are the DS's own .dark block, including its documented
-   * substitutions: --ring #1a64ff and --destructive #ff7b7d. */
+  /* Dark values from the DS's own .dark block, including its documented
+   * substitutions: --ring #1a64ff and --destructive #ff7b7d.
+   *
+   * LIFTED OFF BLACK. The DS ships --ground #0b0b0b / --surface #1f1f1f, which
+   * read as a black page rather than a dark one. The whole ramp moves up one
+   * step - ground #1c1c1c, card #2a2a2a, sunken #333 - and every dependent
+   * value moves with it so no relationship changes:
+   *   - ground:card separation is 1.19:1 before and after,
+   *   - --rule keeps its 1.75:1 hairline against the card,
+   *   - --rule-firm is re-darkened to clear the 3:1 non-text floor again,
+   *   - the four tint fills (--*-bg) are lifted too. They were DARKER than the
+   *     new card, so a highlighted row would have read as a hole punched in it.
+   *     Each still clears 6:1 against its paired --*-ink. */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground:    #0b0b0b;
-      --surface:   #1f1f1f;
-      --sunken:    #2a2a2a;
+      --ground:    #1c1c1c;
+      --surface:   #2a2a2a;
+      --sunken:    #333333;
       --ink:       #dadada;
       --ink-mid:   #9f9f9f;
       --ink-mute:  #9f9f9f;
       --ink-faint: #9f9f9f;
-      --rule:      #464646;
-      --rule-firm: #6e6e6e;  /* 3.23:1 on dark card; #5a5a5a was 2.39:1 */
+      --rule:      #4f4f4f;
+      --rule-firm: #7d7d7d;  /* 3.49:1 on dark card. #6e6e6e held 3.23:1 against the
+                              old #1f1f1f card but only 2.81:1 against this one. */
       --accent:    #7fa6ff;
       --accent-fill: #1a64ff;
-      --accent-bg: #16233d;
+      --accent-bg: #1e2f4f;
       --reg:       #7a7a7a;
-      --reg-bg:    #2a2a2a;
+      --reg-bg:    #3a3a3a;
       --reg-ink:   #dadada;
       --ot:        #d5a155;
-      --ot-bg:     #2a2318;
+      --ot-bg:     #3a3020;
       --ot-ink:    #e8c07a;
       --dt:        #ff7b7d;
-      --dt-bg:     #2f1a1a;
+      --dt-bg:     #4d2a2a;
       --dt-ink:    #ffb3b4;
       --good:      #8cba5e;
-      --good-bg:   #18240f;
-      --good-ink:  #a5cf76;   /* 9.08:1 on --good-bg */
+      --good-bg:   #2b4020;
+      --good-ink:  #a5cf76;   /* 6.35:1 on --good-bg */
     }
   }
   :root[data-theme="dark"] {
-    --ground:    #0b0b0b;
-    --surface:   #1f1f1f;
-    --sunken:    #2a2a2a;
+    --ground:    #1c1c1c;
+    --surface:   #2a2a2a;
+    --sunken:    #333333;
     --ink:       #dadada;
     --ink-mid:   #9f9f9f;
     --ink-mute:  #9f9f9f;
     --ink-faint: #9f9f9f;
-    --rule:      #464646;
-    --rule-firm: #6e6e6e;  /* 3.23:1 on dark card; #5a5a5a was 2.39:1 */
+    --rule:      #4f4f4f;
+    --rule-firm: #7d7d7d;  /* 3.49:1 on dark card. #6e6e6e held 3.23:1 against the
+                              old #1f1f1f card but only 2.81:1 against this one. */
     --accent:    #7fa6ff;
     --accent-fill: #1a64ff;
-    --accent-bg: #16233d;
+    --accent-bg: #1e2f4f;
     --reg:       #7a7a7a;
-    --reg-bg:    #2a2a2a;
+    --reg-bg:    #3a3a3a;
     --reg-ink:   #dadada;
     --ot:        #d5a155;
-    --ot-bg:     #2a2318;
+    --ot-bg:     #3a3020;
     --ot-ink:    #e8c07a;
     --dt:        #ff7b7d;
-    --dt-bg:     #2f1a1a;
+    --dt-bg:     #4d2a2a;
     --dt-ink:    #ffb3b4;
     --good:      #8cba5e;
-    --good-bg:   #18240f;
+    --good-bg:   #2b4020;
     --good-ink:  #a5cf76;
   }
 
@@ -277,7 +290,7 @@
      case, larger-than-house type). Both concerns live in ONE block on purpose:
      they were split before, the density half sat earlier in the sheet, and the
      readability half silently won every conflict on specificity ties. */
-  #cardE { padding: 0.8rem 0.9rem; gap: 0.6rem; }
+  #cardE { --pad-x: 0.9rem; --pad-t: 0.8rem; padding: 0.8rem 0.9rem; gap: 0.6rem; }
   #cardE #eBody, #cardE #outE { gap: 0.6rem; }
 
   #cardE table.mini { font-size: 0.92rem; }
@@ -303,17 +316,24 @@
   #cardE .reframe { padding: 0.45rem 0.7rem; font-size: 0.88rem; }
 
   /* Two weights of the same meaning, so green always reads as "more money":
-     a filled row for the headline figure, green text alone for a delta. */
-  #cardE tr.pop th, #cardE tr.pop td {
+     a filled row for the headline figure, green text alone for a delta.
+     Scoped to BOTH cards. tm.html renders the same markup into #out with no
+     #cardE wrapper, so this family - and tr.less with it - silently did
+     nothing there and the average-pay row lost its green. The meaning system
+     is a unit; it travels wherever the rows do. */
+  #cardE tr.pop th, #cardE tr.pop td,
+  #out tr.pop th, #out tr.pop td {
     background: var(--good-bg); color: var(--good-ink);
     font-weight: 700; border-bottom-color: var(--good-bg);
   }
-  #cardE tr.pop th { border-radius: var(--r-sm) 0 0 var(--r-sm); padding-left: 0.55rem; }
-  #cardE tr.pop td { border-radius: 0 var(--r-sm) var(--r-sm) 0; padding-right: 0.55rem; }
-  #cardE tr.pop th .hint { color: var(--good-ink); font-weight: 500; }
-  #cardE tr.more th, #cardE tr.more td { color: var(--good); font-weight: 700; }
+  #cardE tr.pop th, #out tr.pop th { border-radius: var(--r-sm) 0 0 var(--r-sm); padding-left: 0.55rem; }
+  #cardE tr.pop td, #out tr.pop td { border-radius: 0 var(--r-sm) var(--r-sm) 0; padding-right: 0.55rem; }
+  #cardE tr.pop th .hint, #out tr.pop th .hint { color: var(--good-ink); font-weight: 500; }
+  #cardE tr.more th, #cardE tr.more td,
+  #out tr.more th, #out tr.more td { color: var(--good); font-weight: 700; }
   /* muted = the option that pays less. */
-  #cardE tr.less th, #cardE tr.less td { color: var(--ink-mute); }
+  #cardE tr.less th, #cardE tr.less td,
+  #out tr.less th, #out tr.less td { color: var(--ink-mute); }
   /* Yellow means one thing on this card: the rate reframe. The closing caveat
      gets a neutral treatment so it does not compete with it. */
   /* One size down from the card's body copy, italic, neutral fill so the yellow
@@ -335,12 +355,16 @@
   }
 
   .card {
+    /* Exposed so a full-bleed child (.hero) can cancel the padding by name
+       instead of hard-coding 1.35rem in a second place that then drifts. */
+    --pad-x: 1.35rem;
+    --pad-t: 1.35rem;
     background: var(--surface); border: 1px solid var(--rule);
-    border-radius: var(--r-md); padding: 1.35rem 1.35rem 1.5rem;
+    border-radius: var(--r-md); padding: var(--pad-t) var(--pad-x) 1.5rem;
     display: flex; flex-direction: column; gap: 1.7rem;
   }
   /* results stack — each block needs real air between it and the next */
-  #outA, #outB, #outE { display: flex; flex-direction: column; gap: 1.7rem; }
+  #outA, #outB, #outE, #out { display: flex; flex-direction: column; gap: 1.7rem; }
   /* Scenario B nests everything inside #bBody, so it is one card child and the
      card's gap never reaches its contents. Give it the same gap itself. */
   #bBody, #eBody { display: flex; flex-direction: column; gap: 1.7rem; }
@@ -557,7 +581,7 @@
     .panel, .card, details.limits { break-inside: avoid; box-shadow: none; }
     .scenarios { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
     .card { gap: 1rem; padding: 0.8rem; }
-    #outA, #outB, #outE { gap: 1rem; }
+    #outA, #outB, #outE, #out { gap: 1rem; }
     .bignum { font-size: 1.7rem; }
     .verdict { background: var(--accent-bg); break-inside: avoid; }
 
@@ -592,28 +616,89 @@
   }
   .solver button[disabled] { opacity: 0.4; cursor: default; }
 
+  /* ---------- offer builder: the headline number ----------
+     One figure on this page IS the offer - what the installer takes home in a
+     week. Everything else explains it or qualifies it.
+
+     FIRST ATTEMPT WAS A GREEN PANEL AND IT WAS WRONG. Two reasons, both worth
+     keeping written down:
+
+       1. Geometry. A filled, bordered box as the first child of a filled,
+          bordered card is a box inside a box. That reads as an alert dropped
+          onto the card, not as the card's own headline. Emphasis that looks
+          bolted on does not read as emphasis - it reads as clutter.
+       2. Lever. Fill and hue are the WEAKEST tools for hierarchy and they were
+          doing all the work. Scale, weight and whitespace are the strongest,
+          and the number was still sitting at the same 2.5rem as every other
+          figure in the tool.
+
+     What replaces it uses the strong levers and fixes the geometry:
+       - Full-bleed. Negative margins cancel the card's padding so the block
+         runs edge to edge and becomes the card's masthead rather than an
+         object floating inside it.
+       - Scale. The numeral roughly doubles against the body copy and takes
+         tighter tracking, which is what actually says "this is the number".
+       - A rule, not a border. One firm 2px line closes the section. A rule
+         separates; a box encloses, and enclosing is what looked bolted on.
+       - Tone, not colour. --sunken is one step off the card - enough to seat
+         the band, not enough to shout. NO HUE AT ALL: gold already means the
+         rate reframe, red means double-time, green means more money. A fourth
+         colour with no meaning attached is decoration, and this tool doesn't
+         decorate. */
+  .hero {
+    margin: calc(var(--pad-t) * -1) calc(var(--pad-x) * -1) 0;
+    padding: var(--pad-t) var(--pad-x) 1.2rem;
+    background: var(--sunken);
+    border-bottom: 2px solid var(--ink);
+    /* Inside the card's 1px border, so the corner sits 1px tighter than it. */
+    border-radius: calc(var(--r-md) - 1px) calc(var(--r-md) - 1px) 0 0;
+  }
+  .hero .bignum {
+    font-size: clamp(2.9rem, 12vw, 4rem);
+    letter-spacing: -0.045em; color: var(--ink);
+  }
+  .hero .bignum .cur { font-size: 0.4em; vertical-align: 0.5em; }
+  .hero .bignum-label { margin-bottom: 0.3rem; }
+  .hero .bignum-sub { margin-top: 0.7rem; }
+
   /* ---------- inline editing ----------
      Fields that live inside the sentence they change: the hours in the hero,
      the base and blended rates in the reframe line, weeks/months in the season
-     total. Styled to read as text with a dashed underline, not as a form
-     control, so the card still looks like a statement rather than a form.
+     total.
+
+     These were drawn as text with a dashed underline, on the theory that the
+     card should read as a statement rather than a form. It read too well - the
+     numbers did not look typeable. They are real fields now: own fill, solid
+     border, rounded. The sentence still carries them, but the affordance is
+     unambiguous at arm's length, which is the actual use - a TM holding a
+     laptop in front of an installer.
+
+     --ie-fill is the only knob. On the plain card a field sits a step DOWN
+     into --sunken; on a tinted band (the gold reframe, the green hero) it sits
+     a step OUT to --surface. Either way it separates from whatever it is on,
+     which no single fixed colour can do across three different grounds.
 
      type=text + inputmode=decimal on purpose: the card re-renders on every
      keystroke, and selectionStart - which is how the caret survives that - is
      not readable on type=number in every browser. */
   .ie {
-    font: inherit; color: inherit; background: transparent;
-    border: 0; border-bottom: 1px dashed currentColor;
-    padding: 0 0.08em; text-align: center; border-radius: 2px;
+    --ie-fill: var(--sunken);
+    font: inherit; color: inherit; background: var(--ie-fill);
+    border: 1px solid var(--rule-firm); border-radius: var(--r-sm);
+    padding: 0.06em 0.34em; text-align: center; cursor: text;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.09);
   }
-  .ie:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+  .reframe .ie, .hero .ie { --ie-fill: var(--surface); }
+  .ie:hover { border-color: var(--accent); }
   .ie:focus {
-    outline: 2px solid var(--rule-firm); outline-offset: 1px;
-    border-bottom-color: transparent;
+    outline: 2px solid var(--accent); outline-offset: 1px;
+    border-color: var(--accent);
   }
-  .ie-hrs  { width: 2.7em; }
-  .ie-rate { width: 4.1em; }
-  .ie-wk   { width: 2.2em; }
-  .ie-mo   { width: 2.6em; }
+  /* Each is ~0.8em wider than the bare-text version: the box now spends width
+     on a border and padding, and at the old widths the figures clipped. */
+  .ie-hrs  { width: 3.5em; }
+  .ie-rate { width: 5em; }
+  .ie-wk   { width: 3em; }
+  .ie-mo   { width: 3.4em; }
   /* The hero's hours sit in small grey type; the rates sit in the gold band. */
   .bignum-sub .ie { font-family: var(--mono); }
