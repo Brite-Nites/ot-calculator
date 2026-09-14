@@ -44,20 +44,29 @@
  * time, and it needs no separate calculator UI - it IS the number already on
  * screen, made editable.
  *
- * DAYS is fixed at 6 and the company cap is 12 hrs/day. Not a simplification:
- * at <= 12 hrs/day over >= 5 days the federal, California and Colorado rules
- * pay identically, which is what lets this page skip a state picker and still
- * be right in SoCal and Colorado. Past the cap they diverge - see ruleWarning.
+ * DAYS is fixed at 6 and the company cap is 12 hrs/day, so 72 hours is the
+ * most the page will build. Not a simplification: at <= 12 hrs/day over >= 5
+ * days the federal, California and Colorado rules pay identically, which is
+ * what lets this page skip a state picker and still be right in SoCal and
+ * Colorado. Past that line they diverge and California owes double time.
+ *
+ * The 72-hour clamp is what makes that structural rather than advisory. The
+ * page used to accept any number and print a warning when California would
+ * have diverged; the divergent range is now simply unreachable, so the warning
+ * is gone rather than left in as dead code that still looks like a guard.
  */
 const DAYS = 6;
 const STATE = 'FED';
 const MAX_PER_DAY = 12;
+/* 72. Derived, not typed: if either constant above moves, the cap moves with
+   it and cannot fall out of step with the rule it exists to enforce. */
+const MAX_HOURS = DAYS * MAX_PER_DAY;
 const WEEKS_PER_MONTH = 52 / 12;
 
 /* State lives here, not in the DOM. The card is re-rendered wholesale on every
    keystroke, so any input element is a throwaway - reading values back off it
    would read from a node that is about to be discarded. */
-const S = { rate: 17, hours: 72, weeks: 8 };
+const S = { rate: 17, hours: MAX_HOURS, weeks: 8, capped: false };
 
 const $ = id => document.getElementById(id);
 const money  = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -171,27 +180,20 @@ function render() {
     <p class="bignum-sub">Includes ${trainWk === 1 ? 'one training week' : trainWk + ' training weeks'} at 40 hours.</p>
   </div>`);
 
-  out.push(ruleWarning(hours, rate));
+  /* Only when the clamp actually bit. A field that silently refuses to go
+     higher reads as broken for a second; one line removes the doubt. */
+  if (S.capped) {
+    out.push(`<div class="warn"><b>${MAX_HOURS} hours is the cap.</b>
+      Six days at ${MAX_PER_DAY} hours is the company maximum, so the builder
+      will not go above it.</div>`);
+  }
   out.push(`<div class="warn"><b>Hours not guaranteed.</b>
     Hours change by territory, by week and by weather. Numbers above show what
-    ${hrs(hours)} hours a week pays. Six days a week, 12 hours a day max — at or
-    under that cap, Federal, California and Colorado all pay the same.</div>`);
+    ${hrs(hours)} hours a week pays. Six days a week, ${MAX_PER_DAY} hours a day
+    is the company maximum and this builder will not exceed it — at that cap,
+    Federal, California and Colorado all pay the same.</div>`);
 
   finish(out, keep);
-}
-
-/* Past 12 hrs/day California owes double time and every figure above reads LOW
-   there. Say it loudly rather than quietly printing a federal number. */
-function ruleWarning(hours, rate) {
-  const perDay = hours / DAYS;
-  if (perDay <= MAX_PER_DAY + 0.001) return '';
-  const ca  = computeWeek(rate, evenSplit(hours, DAYS), 'CA').cost;
-  const fed = computeWeek(rate, evenSplit(hours, DAYS), 'FED').cost;
-  if (Math.abs(ca - fed) < 0.005) return '';
-  return `<div class="warn"><b>Over the 12-hour rule.</b>
-    ${hrs(r2(perDay))} hours a day breaks the company cap. In California that owes
-    double time — the same week pays <b>$${money(ca)}</b> there, not $${money(fed)}.
-    Figures above are the Federal number.</div>`;
 }
 
 function finish(out, keep) {
@@ -208,8 +210,23 @@ function finish(out, keep) {
 }
 
 function wire() {
-  const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener('input', () => { fn(num(el.value)); render(); }); };
-  bind('fHours',  v => { S.hours = v; });
+  /* `limit` runs against the ELEMENT before its value is read, so an over-cap
+     number is corrected in the field itself and not only in state. Clamping
+     state alone would leave the input reading 80 while every figure under it
+     priced 72 - and since render() only redraws a field that is NOT focused,
+     that lie would survive until the next keystroke somewhere else. */
+  const bind = (id, fn, limit) => {
+    const el = $(id);
+    if (el) el.addEventListener('input', () => {
+      if (limit) limit(el);
+      fn(num(el.value));
+      render();
+    });
+  };
+  bind('fHours', v => { S.hours = v; }, el => {
+    S.capped = num(el.value) > MAX_HOURS;
+    if (S.capped) el.value = String(MAX_HOURS);
+  });
   bind('fRate',   v => { S.rate  = v; });
   bind('fWeeks',  v => { S.weeks = Math.max(1, Math.floor(v) || 1); });
   bind('fMonths', v => { S.weeks = Math.max(1, Math.round(v * WEEKS_PER_MONTH) || 1); });
